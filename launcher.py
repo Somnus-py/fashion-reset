@@ -4,6 +4,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from tkinter import Tk, Label, messagebox
@@ -15,6 +16,8 @@ REPO_API_LATEST = "https://api.github.com/repos/Somnus-py/fashion-reset/releases
 APP_EXE_NAME = "Fashion Reset.exe"
 VERSION_FILE_NAME = "app_version.txt"
 REQUEST_TIMEOUT = 30
+RELEASE_REINTENTOS = 6
+RELEASE_ESPERA_SEGUNDOS = 5
 
 
 def obtener_carpeta_base():
@@ -67,10 +70,34 @@ def obtener_release_latest():
     assets = release.get("assets", [])
 
     for asset in assets:
-        if asset.get("name") == APP_EXE_NAME:
-            return version, asset.get("browser_download_url", "")
+        nombre_asset = str(asset.get("name") or "").strip()
+        if nombre_asset.lower() == APP_EXE_NAME.lower():
+            nombres_assets = [str(item.get("name") or "").strip() for item in assets]
+            return version, asset.get("browser_download_url", ""), nombres_assets
 
-    return version, ""
+    nombres_assets = [str(asset.get("name") or "").strip() for asset in assets]
+    return version, "", nombres_assets
+
+
+def obtener_release_latest_con_reintentos(actualizar=None):
+    ultima_version = ""
+    ultimos_assets = []
+
+    for intento in range(1, RELEASE_REINTENTOS + 1):
+        version, url_descarga, assets = obtener_release_latest()
+        ultima_version = version
+        ultimos_assets = assets
+
+        if url_descarga:
+            return version, url_descarga, assets
+
+        if actualizar is not None:
+            actualizar(f"Buscando ejecutable en GitHub... ({intento}/{RELEASE_REINTENTOS})")
+
+        if intento < RELEASE_REINTENTOS:
+            time.sleep(RELEASE_ESPERA_SEGUNDOS)
+
+    return ultima_version, "", ultimos_assets
 
 
 def crear_ventana_estado(texto):
@@ -107,7 +134,10 @@ def main():
 
     try:
         version_local = leer_texto(VERSION_FILE_PATH)
-        version_remota, url_descarga = obtener_release_latest()
+        ventana, label = crear_ventana_estado("Buscando actualizaciones...")
+        version_remota, url_descarga, assets = obtener_release_latest_con_reintentos(
+            lambda texto: actualizar_estado(ventana, label, texto)
+        )
 
         necesita_descarga = (
             not os.path.exists(APP_EXE_PATH)
@@ -117,10 +147,13 @@ def main():
 
         if necesita_descarga:
             if not version_remota or not url_descarga:
-                raise RuntimeError("No se encontro el ejecutable en la ultima release.")
+                assets_texto = ", ".join(assets) if assets else "sin archivos adjuntos"
+                raise RuntimeError(
+                    f"No se encontro {APP_EXE_NAME} en la ultima release ({version_remota or 'sin version'}). "
+                    f"Assets encontrados: {assets_texto}."
+                )
 
-            ventana, label = crear_ventana_estado("Descargando actualizacion...")
-
+            actualizar_estado(ventana, label, "Descargando actualizacion...")
             fd, ruta_temporal = tempfile.mkstemp(suffix=".exe", prefix="fashion_reset_")
             os.close(fd)
 

@@ -898,58 +898,64 @@ class AppFashionReset(ctk.CTk):
 
         self._crear_encabezado(self.frame_devolucion, "DEVOLUCIÓN", self.volver_menu_principal)
 
-        frame_busqueda = ctk.CTkFrame(self.frame_devolucion, fg_color=COLOR_FONDO)
-        frame_busqueda.pack(fill="x", padx=20, pady=10)
-
-        ctk.CTkLabel(frame_busqueda, text="Código prenda", text_color=COLOR_TEXTO).grid(
-            row=0, column=0, padx=10, pady=5, sticky="w"
-        )
-        self.entry_devolucion_codigo = ctk.CTkEntry(frame_busqueda, width=180)
-        self.entry_devolucion_codigo.grid(row=1, column=0, padx=10, pady=5, sticky="w")
-
-        boton_buscar = ctk.CTkButton(
-            frame_busqueda,
-            text="Buscar prenda",
-            font=FUENTE_BOTON,
-            fg_color=COLOR_FONDO,
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=1,
-            border_color=COLOR_TEXTO,
-            command=self.buscar_prenda_para_devolucion
-        )
-        boton_buscar.grid(row=1, column=1, padx=10, pady=5, sticky="w")
-
         self.label_estado_devolucion = ctk.CTkLabel(
             self.frame_devolucion,
-            text="Buscá una prenda por código para registrar la devolución.",
+            text="Cargá los códigos de prendas a devolver.",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
         self.label_estado_devolucion.pack(fill="x", padx=20, pady=(0, 10))
 
-        self.label_detalle_devolucion = ctk.CTkLabel(
-            self.frame_devolucion,
-            text="Todavía no hay una prenda cargada para devolución.",
-            text_color="#666666",
-            font=FUENTE_SUBTITULO,
-            justify="left",
-            anchor="w"
-        )
-        self.label_detalle_devolucion.pack(fill="x", padx=20, pady=(0, 20))
+        self.frame_tabla_devolucion = ctk.CTkFrame(self.frame_devolucion, fg_color=COLOR_FONDO)
+        self.frame_tabla_devolucion.pack(fill="x", padx=20, pady=(5, 10))
 
-        boton_devolver = ctk.CTkButton(
-            self.frame_devolucion,
-            text="Registrar devolución",
+        encabezados = [
+            ("CÓDIGO PRENDA", 0, 180),
+            ("RESULTADO", 1, 520),
+        ]
+        for texto, columna, ancho in encabezados:
+            ctk.CTkLabel(
+                self.frame_tabla_devolucion,
+                text=texto,
+                text_color=COLOR_TEXTO,
+                font=FUENTE_BOTON,
+                width=ancho,
+                anchor="w"
+            ).grid(row=0, column=columna, padx=5, pady=5, sticky="w")
+
+        self.filas_devolucion = []
+        self.fila_actual_devolucion = 1
+        self.agregar_filas_devolucion(10)
+
+        frame_botones_inferiores = ctk.CTkFrame(self.frame_devolucion, fg_color=COLOR_FONDO)
+        frame_botones_inferiores.pack(fill="x", padx=20, pady=15)
+
+        boton_agregar_filas = ctk.CTkButton(
+            frame_botones_inferiores,
+            text="Agregar 10 filas más",
             font=FUENTE_BOTON,
             fg_color=COLOR_FONDO,
             hover_color=COLOR_HOVER,
             text_color=COLOR_TEXTO,
             border_width=1,
             border_color=COLOR_TEXTO,
-            command=self.registrar_devolucion_desde_pantalla
+            command=lambda: self.agregar_filas_devolucion(10)
         )
-        boton_devolver.pack(anchor="e", padx=20, pady=(0, 20))
+        boton_agregar_filas.pack(side="left", padx=10)
+
+        boton_guardar = ctk.CTkButton(
+            frame_botones_inferiores,
+            text="Registrar lote",
+            font=FUENTE_BOTON,
+            fg_color=COLOR_FONDO,
+            hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO,
+            command=self.registrar_lote_devolucion_desde_pantalla
+        )
+        boton_guardar.pack(side="right", padx=10)
+        self._resetear_scroll(self.frame_devolucion)
 
     def abrir_ventana_aprobacion_remarque(self):
         self._ocultar_frames_secundarios()
@@ -2712,6 +2718,46 @@ class AppFashionReset(ctk.CTk):
 
         return "\n".join(lineas)
 
+    def agregar_filas_devolucion(self, cantidad=10):
+        for _ in range(cantidad):
+            entry_codigo = ctk.CTkEntry(self.frame_tabla_devolucion, width=180)
+            entry_codigo.grid(row=self.fila_actual_devolucion, column=0, padx=5, pady=4, sticky="w")
+
+            label_resultado = ctk.CTkLabel(
+                self.frame_tabla_devolucion,
+                text="",
+                text_color="#666666",
+                font=FUENTE_SUBTITULO,
+                width=520,
+                anchor="w"
+            )
+            label_resultado.grid(row=self.fila_actual_devolucion, column=1, padx=5, pady=4, sticky="w")
+
+            fila_indice = len(self.filas_devolucion)
+            entry_codigo.bind("<Return>", lambda event, r=fila_indice: self._navegar_devolucion(event, r))
+            entry_codigo.bind("<KP_Enter>", lambda event, r=fila_indice: self._navegar_devolucion(event, r))
+            entry_codigo.bind("<Tab>", lambda event, r=fila_indice: self._navegar_devolucion(event, r))
+            entry_codigo.bind("<Shift-Tab>", lambda event, r=fila_indice: self._navegar_devolucion(event, r))
+            entry_codigo.bind("<Down>", lambda event, r=fila_indice: self._navegar_devolucion(event, r))
+            entry_codigo.bind("<Up>", lambda event, r=fila_indice: self._navegar_devolucion(event, r))
+
+            self.filas_devolucion.append({
+                "codigo": entry_codigo,
+                "resultado": label_resultado,
+            })
+            self.fila_actual_devolucion += 1
+
+    def _navegar_devolucion(self, event, fila_indice):
+        if event.keysym in ("Return", "KP_Enter", "Tab", "Down") and not (event.keysym == "Tab" and event.state & 0x0001):
+            siguiente = fila_indice + 1
+        else:
+            siguiente = fila_indice - 1
+
+        if 0 <= siguiente < len(self.filas_devolucion):
+            self.filas_devolucion[siguiente]["codigo"].focus_set()
+
+        return "break"
+
     def buscar_prenda_para_devolucion(self):
         codigo_prenda = self.entry_devolucion_codigo.get().strip()
         resultado, datos = obtener_prenda_desde_gui(codigo_prenda)
@@ -2779,6 +2825,91 @@ class AppFashionReset(ctk.CTk):
                 f"Estado actual: {datos['estado']}",
             ])
         )
+
+    def registrar_lote_devolucion_desde_pantalla(self):
+        codigos = []
+        codigos_vistos = set()
+        duplicados = set()
+
+        for fila in self.filas_devolucion:
+            codigo = fila["codigo"].get().strip().upper()
+            fila["resultado"].configure(text="", text_color="#666666")
+
+            if not codigo:
+                continue
+
+            if codigo in codigos_vistos:
+                duplicados.add(codigo)
+                fila["resultado"].configure(text="Duplicado en este lote.", text_color="#B00020")
+                continue
+
+            codigos_vistos.add(codigo)
+            codigos.append((codigo, fila))
+
+        if not codigos:
+            self.label_estado_devolucion.configure(
+                text="ERROR: Cargá al menos un código de prenda.",
+                text_color="#B00020"
+            )
+            return
+
+        confirmar = messagebox.askyesno(
+            "Confirmar devolución",
+            f"¿Querés registrar {len(codigos)} devolución(es)?"
+        )
+        if not confirmar:
+            return
+
+        guardadas = 0
+        errores = []
+        codigos_guardados = []
+
+        for codigo, fila in codigos:
+            resultado, datos = registrar_devolucion_desde_gui(codigo)
+
+            if resultado:
+                guardadas += 1
+                codigos_guardados.append(datos["codigo_prenda"])
+                fila["codigo"].delete(0, "end")
+                fila["resultado"].configure(
+                    text=f"Devuelta: {datos['articulo']} | {datos['estado']}",
+                    text_color="#2E5E2E"
+                )
+            else:
+                errores.append(f"{codigo}: {datos}")
+                fila["resultado"].configure(text=datos, text_color="#B00020")
+
+        resumen = [
+            f"Devueltas: {guardadas}",
+            f"Errores: {len(errores) + len(duplicados)}",
+        ]
+
+        if codigos_guardados:
+            resumen.append("")
+            resumen.append("Códigos devueltos:")
+            resumen.extend(codigos_guardados)
+
+        if duplicados:
+            resumen.append("")
+            resumen.append("Duplicados:")
+            resumen.extend(sorted(duplicados))
+
+        if errores or duplicados:
+            resumen.append("")
+            resumen.extend(errores)
+            self.label_estado_devolucion.configure(
+                text=f"Se registraron {guardadas} devolución(es), con errores.",
+                text_color="#B00020"
+            )
+            messagebox.showwarning("Resumen de devolución", "\n".join(resumen))
+        else:
+            self.label_estado_devolucion.configure(
+                text=f"Se registraron {guardadas} devolución(es).",
+                text_color="#2E5E2E"
+            )
+            messagebox.showinfo("Resumen de devolución", "\n".join(resumen))
+            if guardadas:
+                self.abrir_ventana_devolucion()
 
     def buscar_proveedora_desde_pantalla(self):
         resultado, datos = obtener_proveedora_desde_gui(
