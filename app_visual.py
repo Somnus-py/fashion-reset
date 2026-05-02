@@ -70,7 +70,7 @@ class AppFashionReset(ctk.CTk):
         self.frame_botones.pack(pady=30, padx=30, fill="both", expand=True)
 
         self.frame_ingreso = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
-        self.frame_venta = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
+        self.frame_venta = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_consultas = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_resumen_general = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_pendientes_validacion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
@@ -349,10 +349,12 @@ class AppFashionReset(ctk.CTk):
 
         self.filas_venta = []
         self.fila_actual_venta = 1
+        self.frame_contenido_venta = ctk.CTkScrollableFrame(self.frame_venta, fg_color=COLOR_FONDO)
+        self.frame_contenido_venta.pack(fill="both", expand=True)
 
-        self._crear_encabezado(self.frame_venta, "CARGAR VENTA", self.volver_menu_principal)
+        self._crear_encabezado(self.frame_contenido_venta, "CARGAR VENTA", self.volver_menu_principal)
 
-        frame_lote = ctk.CTkFrame(self.frame_venta, fg_color=COLOR_FONDO)
+        frame_lote = ctk.CTkFrame(self.frame_contenido_venta, fg_color=COLOR_FONDO)
         frame_lote.pack(fill="x", padx=20, pady=10)
 
         label_fecha = ctk.CTkLabel(frame_lote, text="Fecha venta", text_color=COLOR_TEXTO)
@@ -376,7 +378,7 @@ class AppFashionReset(ctk.CTk):
         ]
         self.validacion_opciones = ["PENDIENTE", "PAGADO"]
 
-        self.frame_tabla_venta = ctk.CTkFrame(self.frame_venta, fg_color=COLOR_FONDO)
+        self.frame_tabla_venta = ctk.CTkFrame(self.frame_contenido_venta, fg_color=COLOR_FONDO)
         self.frame_tabla_venta.pack(fill="x", padx=20, pady=(10, 0))
 
         encabezados = [
@@ -402,7 +404,7 @@ class AppFashionReset(ctk.CTk):
         self.agregar_filas_venta(10)
 
         frame_botones_inferiores = ctk.CTkFrame(self.frame_venta, fg_color=COLOR_FONDO)
-        frame_botones_inferiores.pack(fill="x", padx=20, pady=15)
+        frame_botones_inferiores.pack(fill="x", padx=20, pady=(10, 0))
         frame_botones_inferiores.grid_columnconfigure(0, weight=1)
 
         frame_acciones_izquierda = ctk.CTkFrame(frame_botones_inferiores, fg_color=COLOR_FONDO)
@@ -441,7 +443,7 @@ class AppFashionReset(ctk.CTk):
             command=lambda: self.guardar_lote_venta(entry_fecha, entry_cliente)
         )
         boton_guardar.grid(row=0, column=1, padx=10, sticky="e")
-        self._resetear_scroll(self.frame_venta)
+        self._resetear_scroll(self.frame_contenido_venta)
 
     def abrir_ventana_consultas(self):
         self._ocultar_frames_secundarios()
@@ -3419,24 +3421,46 @@ class AppFashionReset(ctk.CTk):
 
         return "\n".join(lineas)
 
+    def _widget_acepta_foco(self, widget):
+        try:
+            return widget.cget("state") != "disabled"
+        except Exception:
+            return True
+
     def _mover_foco(self, filas_tabla, fila_indice, col_indice):
         if fila_indice < 0 or fila_indice >= len(filas_tabla):
-            return
+            return False
         if col_indice < 0 or col_indice >= len(filas_tabla[fila_indice]):
-            return
+            return False
+        if not self._widget_acepta_foco(filas_tabla[fila_indice][col_indice]):
+            return False
         filas_tabla[fila_indice][col_indice].focus_set()
+        return True
 
     def _mover_foco_siguiente(self, filas_tabla, fila_indice, col_indice):
-        if col_indice + 1 < len(filas_tabla[fila_indice]):
-            self._mover_foco(filas_tabla, fila_indice, col_indice + 1)
-        elif fila_indice + 1 < len(filas_tabla):
-            self._mover_foco(filas_tabla, fila_indice + 1, 0)
+        fila_actual = fila_indice
+        columna_actual = col_indice + 1
+
+        while fila_actual < len(filas_tabla):
+            while columna_actual < len(filas_tabla[fila_actual]):
+                if self._mover_foco(filas_tabla, fila_actual, columna_actual):
+                    return
+                columna_actual += 1
+            fila_actual += 1
+            columna_actual = 0
 
     def _mover_foco_anterior(self, filas_tabla, fila_indice, col_indice):
-        if col_indice - 1 >= 0:
-            self._mover_foco(filas_tabla, fila_indice, col_indice - 1)
-        elif fila_indice - 1 >= 0:
-            self._mover_foco(filas_tabla, fila_indice - 1, len(filas_tabla[fila_indice - 1]) - 1)
+        fila_actual = fila_indice
+        columna_actual = col_indice - 1
+
+        while fila_actual >= 0:
+            while columna_actual >= 0:
+                if self._mover_foco(filas_tabla, fila_actual, columna_actual):
+                    return
+                columna_actual -= 1
+            fila_actual -= 1
+            if fila_actual >= 0:
+                columna_actual = len(filas_tabla[fila_actual]) - 1
 
     def _navegar_entrada(self, event, filas_tabla, fila_indice, col_indice):
         if event.keysym in ("Return", "KP_Enter", "Tab") and not (event.keysym == "Tab" and event.state & 0x0001):
@@ -3444,9 +3468,9 @@ class AppFashionReset(ctk.CTk):
         elif event.keysym in ("ISO_Left_Tab", "Tab") and event.state & 0x0001:
             self._mover_foco_anterior(filas_tabla, fila_indice, col_indice)
         elif event.keysym == "Right":
-            self._mover_foco(filas_tabla, fila_indice, col_indice + 1)
+            self._mover_foco_siguiente(filas_tabla, fila_indice, col_indice)
         elif event.keysym == "Left":
-            self._mover_foco(filas_tabla, fila_indice, col_indice - 1)
+            self._mover_foco_anterior(filas_tabla, fila_indice, col_indice)
         elif event.keysym == "Down":
             self._mover_foco(filas_tabla, fila_indice + 1, col_indice)
         elif event.keysym == "Up":

@@ -14,6 +14,12 @@ import certifi
 
 REPO_API_LATEST = "https://api.github.com/repos/Somnus-py/fashion-reset/releases/latest"
 APP_EXE_NAME = "Fashion Reset.exe"
+APP_ASSET_NAMES = {
+    "Fashion Reset.exe",
+    "fashion.reset.exe",
+    "fashion-reset.exe",
+    "fashion_reset.exe",
+}
 VERSION_FILE_NAME = "app_version.txt"
 REQUEST_TIMEOUT = 30
 RELEASE_REINTENTOS = 6
@@ -64,6 +70,27 @@ def descargar_archivo(url, destino):
             archivo.write(response.read())
 
 
+def normalizar_nombre_asset(nombre):
+    return "".join(
+        caracter.lower()
+        for caracter in str(nombre or "")
+        if caracter.isalnum()
+    )
+
+
+def es_asset_app(nombre_asset):
+    nombre_normalizado = normalizar_nombre_asset(nombre_asset)
+    nombres_app = {normalizar_nombre_asset(nombre) for nombre in APP_ASSET_NAMES}
+    nombres_launcher = {
+        normalizar_nombre_asset("Fashion Reset Launcher.exe"),
+        normalizar_nombre_asset("fashion.reset.launcher.exe"),
+        normalizar_nombre_asset("fashion-reset-launcher.exe"),
+        normalizar_nombre_asset("fashion_reset_launcher.exe"),
+    }
+
+    return nombre_normalizado in nombres_app and nombre_normalizado not in nombres_launcher
+
+
 def obtener_release_latest():
     release = pedir_json(REPO_API_LATEST)
     version = release.get("tag_name", "").strip()
@@ -71,7 +98,7 @@ def obtener_release_latest():
 
     for asset in assets:
         nombre_asset = str(asset.get("name") or "").strip()
-        if nombre_asset.lower() == APP_EXE_NAME.lower():
+        if es_asset_app(nombre_asset):
             nombres_assets = [str(item.get("name") or "").strip() for item in assets]
             return version, asset.get("browser_download_url", ""), nombres_assets
 

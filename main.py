@@ -3,6 +3,7 @@ import sys
 
 from openpyxl import load_workbook
 from openpyxl import Workbook
+from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 from datetime import datetime
 
@@ -34,6 +35,18 @@ def convertir_fecha(texto_fecha):
     for formato in ("%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
             return datetime.strptime(texto_fecha, formato)
+        except ValueError:
+            pass
+
+    raise ValueError("FECHA INVALIDA")
+
+
+def normalizar_fecha_usuario(texto_fecha):
+    texto_fecha = str(texto_fecha).strip()
+
+    for formato in ("%d/%m/%Y", "%d/%m/%y"):
+        try:
+            return datetime.strptime(texto_fecha, formato).strftime("%d/%m/%Y")
         except ValueError:
             pass
 
@@ -109,9 +122,9 @@ def _guardar_ingreso_en_excel(
     codigo_prenda = f"{codigo_proveedora}{numero_prenda}"
 
     try:
-        datetime.strptime(fecha_ingreso, "%d/%m/%Y")
+        fecha_ingreso = normalizar_fecha_usuario(fecha_ingreso)
     except ValueError:
-        return False, "ERROR: FECHA_INGRESO invalida. Usa el formato DD/MM/YYYY."
+        return False, "ERROR: FECHA_INGRESO invalida. Usa el formato DD/MM/YY o DD/MM/YYYY."
 
     precio = ""
     if precio_texto:
@@ -251,9 +264,9 @@ def guardar_venta_desde_gui(
             return False, "ERROR: Para DESCUENTO A PROVEEDORA, debes indicar el codigo de la proveedora."
 
     try:
-        datetime.strptime(fecha_venta, "%d/%m/%Y")
+        fecha_venta = normalizar_fecha_usuario(fecha_venta)
     except ValueError:
-        return False, "ERROR: FECHA_VENTA invalida. Usa el formato DD/MM/YYYY."
+        return False, "ERROR: FECHA_VENTA invalida. Usa el formato DD/MM/YY o DD/MM/YYYY."
 
     if not precio_venta_texto:
         precio_venta_texto = precio_lista
@@ -2030,9 +2043,7 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
 
         ws_export.append([])
         ws_export.append(["CANTIDAD PRENDAS", cantidad_prendas])
-        ws_export.append(["TOTAL VENDIDO", total_vendido])
-        ws_export.append(["COMISION PROVEEDORA (60%)", comision_proveedora])
-        ws_export.append(["COMISION FASHION RESET (40%)", comision_fashion_reset])
+        ws_export.append(["MONTO A PROVEEDORA (60%)", comision_proveedora])
         ws_export.append(["TOTAL DESCUENTOS A PROVEEDORA", total_descuentos])
         ws_export.append(["SALDO FINAL A PAGAR", saldo_final])
 
@@ -2058,13 +2069,34 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
         for fila in ws_export.iter_rows(min_row=1, max_col=2):
             etiqueta = str(fila[0].value or "").strip().upper()
             if etiqueta in {
-                "TOTAL VENDIDO",
-                "COMISION PROVEEDORA (60%)",
-                "COMISION FASHION RESET (40%)",
+                "MONTO A PROVEEDORA (60%)",
                 "TOTAL DESCUENTOS A PROVEEDORA",
                 "SALDO FINAL A PAGAR",
             } and isinstance(fila[1].value, (int, float)):
                 fila[1].number_format = formato_miles
+
+        etiquetas_negrita = {
+            "RENDICION DE CUENTAS",
+            "MES",
+            "AÃ‘O",
+            "CODIGO PROVEEDORA",
+            "NOMBRE PROVEEDORA",
+            "CODIGO PRENDA",
+            "ARTICULO",
+            "PRECIO VENTA",
+            "CANTIDAD PRENDAS",
+            "MONTO A PROVEEDORA (60%)",
+            "TOTAL DESCUENTOS A PROVEEDORA",
+            "SALDO FINAL A PAGAR",
+            "DETALLE DE DESCUENTOS A PROVEEDORA",
+            "PRECIO DESCONTADO",
+        }
+
+        for fila in ws_export.iter_rows(min_row=1, max_col=3):
+            for celda in fila:
+                etiqueta = str(celda.value or "").strip().upper()
+                if etiqueta in etiquetas_negrita:
+                    celda.font = Font(bold=True)
 
         for fila in ws_export.iter_rows(min_row=1, max_col=3):
             etiqueta = str(fila[0].value or "").strip().upper()
@@ -2171,9 +2203,9 @@ def actualizar_venta_desde_gui(
         return False, "ERROR: Debes indicar el codigo de la proveedora para el descuento."
 
     try:
-        datetime.strptime(fecha_venta, "%d/%m/%Y")
+        fecha_venta = normalizar_fecha_usuario(fecha_venta)
     except ValueError:
-        return False, "ERROR: FECHA_VENTA invalida. Usa el formato DD/MM/YYYY."
+        return False, "ERROR: FECHA_VENTA invalida. Usa el formato DD/MM/YY o DD/MM/YYYY."
 
     try:
         precio_venta = int(precio_venta_texto.replace(".", "").replace(",", ""))
