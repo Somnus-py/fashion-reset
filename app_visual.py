@@ -239,6 +239,33 @@ class AppFashionReset(ctk.CTk):
 
         return frame_encabezado
 
+    def _resetear_scroll(self, frame):
+        try:
+            self.after(0, lambda: frame._parent_canvas.yview_moveto(0))
+        except Exception:
+            pass
+
+    def _aplicar_mascara_fecha(self, entry):
+        entry.bind("<KeyRelease>", lambda event, e=entry: self._formatear_fecha_en_entry(e))
+
+    def _formatear_fecha_en_entry(self, entry):
+        texto = entry.get()
+        digitos = "".join(caracter for caracter in texto if caracter.isdigit())[:8]
+
+        if len(digitos) <= 2:
+            formateado = digitos
+        elif len(digitos) <= 4:
+            formateado = f"{digitos[:2]}/{digitos[2:]}"
+        else:
+            formateado = f"{digitos[:2]}/{digitos[2:4]}/{digitos[4:]}"
+
+        if texto == formateado:
+            return
+
+        entry.delete(0, "end")
+        entry.insert(0, formateado)
+        entry.icursor("end")
+
     def abrir_ventana_ingreso(self):
         self._ocultar_frames_secundarios()
         self.frame_botones.pack_forget()
@@ -260,6 +287,7 @@ class AppFashionReset(ctk.CTk):
 
         entry_fecha = ctk.CTkEntry(frame_lote, width=140)
         entry_fecha.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self._aplicar_mascara_fecha(entry_fecha)
 
         label_proveedora = ctk.CTkLabel(frame_lote, text="Código proveedora", text_color=COLOR_TEXTO)
         label_proveedora.grid(row=0, column=1, padx=10, pady=5, sticky="w")
@@ -332,6 +360,7 @@ class AppFashionReset(ctk.CTk):
 
         entry_fecha = ctk.CTkEntry(frame_lote, width=140)
         entry_fecha.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self._aplicar_mascara_fecha(entry_fecha)
 
         label_cliente = ctk.CTkLabel(frame_lote, text="Cliente", text_color=COLOR_TEXTO)
         label_cliente.grid(row=0, column=1, padx=10, pady=5, sticky="w")
@@ -412,6 +441,7 @@ class AppFashionReset(ctk.CTk):
             command=lambda: self.guardar_lote_venta(entry_fecha, entry_cliente)
         )
         boton_guardar.grid(row=0, column=1, padx=10, sticky="e")
+        self._resetear_scroll(self.frame_venta)
 
     def abrir_ventana_consultas(self):
         self._ocultar_frames_secundarios()
@@ -1086,6 +1116,8 @@ class AppFashionReset(ctk.CTk):
             entry = ctk.CTkEntry(frame_formulario, width=220)
             entry.grid(row=fila + 1, column=columna, padx=10, pady=(0, 8), sticky="w")
             self.editar_venta_entries[clave] = entry
+            if clave == "fecha_venta":
+                self._aplicar_mascara_fecha(entry)
 
         ctk.CTkLabel(frame_formulario, text="Tipo pago", text_color=COLOR_TEXTO).grid(
             row=4, column=0, padx=10, pady=(6, 2), sticky="w"
@@ -1668,6 +1700,25 @@ class AppFashionReset(ctk.CTk):
         )
         boton_todas.grid(row=1, column=2, padx=10, pady=5, sticky="w")
 
+        ctk.CTkLabel(frame_busqueda, text="Filtrar prendas", text_color=COLOR_TEXTO).grid(
+            row=0, column=3, padx=10, pady=5, sticky="w"
+        )
+        self.filtro_estado_proveedora = ctk.StringVar(value="TODAS")
+        self.option_filtro_estado_proveedora = ctk.CTkOptionMenu(
+            frame_busqueda,
+            values=["TODAS", "DISPONIBLES", "VENDIDAS"],
+            variable=self.filtro_estado_proveedora,
+            width=140,
+            fg_color=COLOR_FONDO,
+            button_color=COLOR_FONDO,
+            button_hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            dropdown_fg_color=COLOR_FONDO,
+            dropdown_text_color=COLOR_TEXTO,
+            command=lambda _valor: self.actualizar_filtro_proveedora()
+        )
+        self.option_filtro_estado_proveedora.grid(row=1, column=3, padx=10, pady=5, sticky="w")
+
         self.label_estado_ver_proveedora = ctk.CTkLabel(
             self.frame_proveedoras,
             text="Ingresá un código para consultar la proveedora.",
@@ -1739,6 +1790,7 @@ class AppFashionReset(ctk.CTk):
         self.textbox_detalle_proveedora.configure(font=("Consolas", 13))
         self.textbox_detalle_proveedora.insert("1.0", "Todavía no hay resultados para mostrar.")
         self.textbox_detalle_proveedora.configure(state="disabled")
+        self.detalle_proveedora_actual = []
 
     def abrir_ventana_rendicion(self):
         self._ocultar_frames_secundarios()
@@ -1947,6 +1999,7 @@ class AppFashionReset(ctk.CTk):
                 guardadas += 1
                 codigos_guardados.append(codigo_prenda)
                 fila[0].configure(border_color=COLOR_TEXTO, state="normal")
+                fila[0].delete(0, "end")
                 fila[1].delete(0, "end")
                 fila[1].configure(state="disabled")
                 fila[2].delete(0, "end")
@@ -1982,6 +2035,8 @@ class AppFashionReset(ctk.CTk):
             messagebox.showwarning("Resumen de guardado", "\n".join(resumen))
         else:
             messagebox.showinfo("Resumen de guardado", "\n".join(resumen))
+            if guardadas:
+                self.abrir_ventana_venta()
 
     def guardar_lote_ingreso(self, entry_fecha, entry_proveedora):
         fecha_ingreso = entry_fecha.get().strip()
@@ -2743,6 +2798,7 @@ class AppFashionReset(ctk.CTk):
 
         proveedora = datos["proveedora"]
         resumen = datos["resumen_prendas"]
+        self.detalle_proveedora_actual = datos["detalle_prendas"]
         self.datos_proveedora_vars["nombre_proveedora"].set(proveedora["nombre_proveedora"] or "-")
         self.datos_proveedora_vars["telefono"].set(proveedora["telefono"] or "-")
         self.datos_proveedora_vars["banco"].set(proveedora["banco"] or "-")
@@ -2755,9 +2811,7 @@ class AppFashionReset(ctk.CTk):
         self.datos_proveedora_vars["prendas_disponibles"].set(str(resumen["prendas_disponibles"]))
         self.datos_proveedora_vars["prendas_vendidas"].set(str(resumen["prendas_vendidas"]))
         self.datos_proveedora_vars["prendas_devueltas"].set(str(resumen["prendas_devueltas"]))
-        self._mostrar_detalle_proveedora(
-            self._construir_tabla_proveedora(datos["detalle_prendas"])
-        )
+        self.actualizar_filtro_proveedora()
 
     def mostrar_todas_las_proveedoras(self):
         resultado, datos = obtener_todas_las_proveedoras_desde_gui()
@@ -2773,6 +2827,7 @@ class AppFashionReset(ctk.CTk):
             text_color="#2E5E2E"
         )
         self._limpiar_datos_proveedora()
+        self.detalle_proveedora_actual = []
         self._mostrar_detalle_proveedora(self._construir_tabla_todas_proveedoras(datos))
 
 
@@ -2948,6 +3003,26 @@ class AppFashionReset(ctk.CTk):
         self.textbox_detalle_proveedora.delete("1.0", "end")
         self.textbox_detalle_proveedora.insert("1.0", texto)
         self.textbox_detalle_proveedora.configure(state="disabled")
+
+    def actualizar_filtro_proveedora(self):
+        if not hasattr(self, "detalle_proveedora_actual"):
+            return
+
+        filtro = self.filtro_estado_proveedora.get().strip().upper()
+        filas = self.detalle_proveedora_actual
+
+        if filtro == "DISPONIBLES":
+            filas = [
+                fila for fila in filas
+                if str(fila.get("estado") or "").strip().upper() == "DISPONIBLE"
+            ]
+        elif filtro == "VENDIDAS":
+            filas = [
+                fila for fila in filas
+                if str(fila.get("estado") or "").strip().upper() == "VENDIDO"
+            ]
+
+        self._mostrar_detalle_proveedora(self._construir_tabla_proveedora(filas))
 
     def _construir_tabla_resumen_general(self, filas):
         if not filas:
@@ -3226,9 +3301,17 @@ class AppFashionReset(ctk.CTk):
         elif fila_indice + 1 < len(filas_tabla):
             self._mover_foco(filas_tabla, fila_indice + 1, 0)
 
+    def _mover_foco_anterior(self, filas_tabla, fila_indice, col_indice):
+        if col_indice - 1 >= 0:
+            self._mover_foco(filas_tabla, fila_indice, col_indice - 1)
+        elif fila_indice - 1 >= 0:
+            self._mover_foco(filas_tabla, fila_indice - 1, len(filas_tabla[fila_indice - 1]) - 1)
+
     def _navegar_entrada(self, event, filas_tabla, fila_indice, col_indice):
-        if event.keysym in ("Return", "KP_Enter"):
+        if event.keysym in ("Return", "KP_Enter", "Tab") and not (event.keysym == "Tab" and event.state & 0x0001):
             self._mover_foco_siguiente(filas_tabla, fila_indice, col_indice)
+        elif event.keysym in ("ISO_Left_Tab", "Tab") and event.state & 0x0001:
+            self._mover_foco_anterior(filas_tabla, fila_indice, col_indice)
         elif event.keysym == "Right":
             self._mover_foco(filas_tabla, fila_indice, col_indice + 1)
         elif event.keysym == "Left":
@@ -3407,6 +3490,8 @@ class AppFashionReset(ctk.CTk):
             for col_indice, entrada in enumerate(fila_entradas):
                 entrada.bind("<Return>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_ingreso, r, c))
                 entrada.bind("<KP_Enter>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_ingreso, r, c))
+                entrada.bind("<Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_ingreso, r, c))
+                entrada.bind("<Shift-Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_ingreso, r, c))
                 entrada.bind("<Right>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_ingreso, r, c))
                 entrada.bind("<Left>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_ingreso, r, c))
                 entrada.bind("<Down>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_ingreso, r, c))
@@ -3497,6 +3582,8 @@ class AppFashionReset(ctk.CTk):
             for col_indice, entrada in enumerate(fila_entradas):
                 entrada.bind("<Return>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
                 entrada.bind("<KP_Enter>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
+                entrada.bind("<Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
+                entrada.bind("<Shift-Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
                 entrada.bind("<Right>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
                 entrada.bind("<Left>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
                 entrada.bind("<Down>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
@@ -3504,6 +3591,7 @@ class AppFashionReset(ctk.CTk):
 
             entry_codigo.bind("<Return>", lambda event, r=fila_indice, c=0: self._autocompletar_y_navegar_venta(event, r, c))
             entry_codigo.bind("<KP_Enter>", lambda event, r=fila_indice, c=0: self._autocompletar_y_navegar_venta(event, r, c))
+            entry_codigo.bind("<Tab>", lambda event, r=fila_indice, c=0: self._autocompletar_y_navegar_venta(event, r, c))
             entry_codigo.bind("<FocusOut>", lambda event, r=fila_indice: self._autocompletar_venta(event, r))
 
             self.filas_venta.append(fila_entradas)
