@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.exe
+*.spec.bak
+
+# Packaged deliveries
+Entrega - Fashion Reset/
+*.zip
+*.rar
+*.7z
+
+# Excel working data
+*.xlsx
+~$*.xls*
+
+# Logs and local OS files
+*.log
+Thumbs.db
+desktop.ini
