@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Build executable
+      - name: Build application executable
         run: |
           python -m PyInstaller `
             --noconfirm `
@@ -37,7 +37,18 @@ jobs:
             --name "Fashion Reset" `
             app_visual.py
 
+      - name: Build launcher executable
+        run: |
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --windowed `
+            --onefile `
+            --icon "Icono Fashion Reset.ico" `
+            --name "Fashion Reset Launcher" `
+            launcher.py
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Fashion Reset.exe
+          files: dist/*.exe
