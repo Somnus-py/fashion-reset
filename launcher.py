@@ -1,11 +1,14 @@
 import json
 import os
+import ssl
 import subprocess
 import sys
 import tempfile
 import urllib.error
 import urllib.request
 from tkinter import Tk, Label, messagebox
+
+import certifi
 
 
 REPO_API_LATEST = "https://api.github.com/repos/Somnus-py/fashion-reset/releases/latest"
@@ -23,6 +26,7 @@ def obtener_carpeta_base():
 CARPETA_BASE = obtener_carpeta_base()
 APP_EXE_PATH = os.path.join(CARPETA_BASE, APP_EXE_NAME)
 VERSION_FILE_PATH = os.path.join(CARPETA_BASE, VERSION_FILE_NAME)
+SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 
 def leer_texto(ruta):
@@ -46,13 +50,13 @@ def pedir_json(url):
             "User-Agent": "FashionResetLauncher",
         },
     )
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT, context=SSL_CONTEXT) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
 def descargar_archivo(url, destino):
     request = urllib.request.Request(url, headers={"User-Agent": "FashionResetLauncher"})
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT, context=SSL_CONTEXT) as response:
         with open(destino, "wb") as archivo:
             archivo.write(response.read())
 
