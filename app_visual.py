@@ -16,6 +16,7 @@ from main import (
     calcular_ventas_pendientes,
     crear_proveedora_desde_gui,
     exportar_lote_remarque_excel,
+    exportar_prendas_disponibles_proveedora_excel,
     exportar_rendicion_excel,
     guardar_decisiones_remarque_desde_gui,
     guardar_lote_remarque_desde_gui,
@@ -1727,6 +1728,20 @@ class AppFashionReset(ctk.CTk):
         )
         self.option_filtro_estado_proveedora.grid(row=1, column=3, padx=10, pady=5, sticky="w")
 
+        self.boton_exportar_disponibles_proveedora = ctk.CTkButton(
+            frame_busqueda,
+            text="Exportar disponibles",
+            font=FUENTE_BOTON,
+            fg_color=COLOR_FONDO,
+            hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO,
+            state="disabled",
+            command=self.exportar_disponibles_proveedora_actual
+        )
+        self.boton_exportar_disponibles_proveedora.grid(row=1, column=4, padx=10, pady=5, sticky="w")
+
         self.label_estado_ver_proveedora = ctk.CTkLabel(
             self.frame_proveedoras,
             text="Ingresá un código para consultar la proveedora.",
@@ -1799,6 +1814,7 @@ class AppFashionReset(ctk.CTk):
         self.textbox_detalle_proveedora.insert("1.0", "Todavía no hay resultados para mostrar.")
         self.textbox_detalle_proveedora.configure(state="disabled")
         self.detalle_proveedora_actual = []
+        self.proveedora_actual = None
 
     def abrir_ventana_rendicion(self):
         self._ocultar_frames_secundarios()
@@ -2931,7 +2947,9 @@ class AppFashionReset(ctk.CTk):
 
         proveedora = datos["proveedora"]
         resumen = datos["resumen_prendas"]
+        self.proveedora_actual = proveedora
         self.detalle_proveedora_actual = datos["detalle_prendas"]
+        self.boton_exportar_disponibles_proveedora.configure(state="normal")
         self.datos_proveedora_vars["nombre_proveedora"].set(proveedora["nombre_proveedora"] or "-")
         self.datos_proveedora_vars["telefono"].set(proveedora["telefono"] or "-")
         self.datos_proveedora_vars["banco"].set(proveedora["banco"] or "-")
@@ -2961,6 +2979,8 @@ class AppFashionReset(ctk.CTk):
         )
         self._limpiar_datos_proveedora()
         self.detalle_proveedora_actual = []
+        self.proveedora_actual = None
+        self.boton_exportar_disponibles_proveedora.configure(state="disabled")
         self._mostrar_detalle_proveedora(self._construir_tabla_todas_proveedoras(datos))
 
 
@@ -3021,7 +3041,9 @@ class AppFashionReset(ctk.CTk):
             [
                 venta["codigo_prenda"],
                 venta["articulo"],
+                venta["color"],
                 venta["precio_venta"],
+                venta["comision_proveedora"],
             ]
             for venta in self.rendicion_actual["ventas_rendicion"]
         ]
@@ -3044,6 +3066,27 @@ class AppFashionReset(ctk.CTk):
 
         messagebox.showinfo("Exportar rendición", f"Archivo generado: {mensaje}")
 
+    def exportar_disponibles_proveedora_actual(self):
+        if not self.proveedora_actual or not self.detalle_proveedora_actual:
+            messagebox.showwarning("Exportar disponibles", "Primero buscá una proveedora.")
+            return
+
+        resultado, mensaje = exportar_prendas_disponibles_proveedora_excel(
+            self.proveedora_actual["codigo_proveedora"],
+            self.proveedora_actual["nombre_proveedora"],
+            self.detalle_proveedora_actual
+        )
+        if not resultado:
+            self.label_estado_ver_proveedora.configure(text=mensaje, text_color="#B00020")
+            messagebox.showerror("Exportar disponibles", mensaje)
+            return
+
+        self.label_estado_ver_proveedora.configure(
+            text=f"Prendas disponibles exportadas para {self.proveedora_actual['codigo_proveedora']}.",
+            text_color="#2E5E2E"
+        )
+        messagebox.showinfo("Exportar disponibles", f"Archivo generado: {mensaje}")
+
     def _limpiar_resumen_rendicion(self):
         for variable in self.resumen_vars.values():
             variable.set("-")
@@ -3059,6 +3102,10 @@ class AppFashionReset(ctk.CTk):
     def _limpiar_datos_proveedora(self):
         for variable in self.datos_proveedora_vars.values():
             variable.set("-")
+        self.proveedora_actual = None
+        self.detalle_proveedora_actual = []
+        if hasattr(self, "boton_exportar_disponibles_proveedora"):
+            self.boton_exportar_disponibles_proveedora.configure(state="disabled")
 
     def _limpiar_formulario_editar_venta(self):
         if not hasattr(self, "editar_venta_entries"):
@@ -3354,7 +3401,9 @@ class AppFashionReset(ctk.CTk):
             ("FECHA", 12),
             ("CODIGO", 12),
             ("ARTICULO", 18),
+            ("COLOR", 12),
             ("PRECIO", 12),
+            ("60% PROV.", 12),
             ("CLIENTE", 18),
             ("TIPO PAGO", 22),
             ("VALIDACION", 12),
@@ -3369,7 +3418,9 @@ class AppFashionReset(ctk.CTk):
                 self._formatear_fecha(venta["fecha_venta"]),
                 str(venta["codigo_prenda"] or ""),
                 str(venta["articulo"] or ""),
+                str(venta["color"] or ""),
                 self._format_moneda(venta["precio_venta"]),
+                self._format_moneda(venta["comision_proveedora"]),
                 str(venta["cliente"] or ""),
                 str(venta["tipo_pago"] or ""),
                 str(venta["validacion"] or ""),

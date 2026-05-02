@@ -4,6 +4,7 @@ import sys
 from openpyxl import load_workbook
 from openpyxl import Workbook
 from openpyxl.styles import Font
+from openpyxl.styles import PatternFill
 from openpyxl.utils import get_column_letter
 from datetime import datetime
 
@@ -51,6 +52,24 @@ def normalizar_fecha_usuario(texto_fecha):
             pass
 
     raise ValueError("FECHA INVALIDA")
+
+
+def nombre_mes(mes):
+    meses = [
+        "ENERO",
+        "FEBRERO",
+        "MARZO",
+        "ABRIL",
+        "MAYO",
+        "JUNIO",
+        "JULIO",
+        "AGOSTO",
+        "SEPTIEMBRE",
+        "OCTUBRE",
+        "NOVIEMBRE",
+        "DICIEMBRE",
+    ]
+    return meses[int(mes) - 1]
 
 
 def normalizar_obs_descuento_proveedora(tipo_pago, obs_venta):
@@ -1351,6 +1370,98 @@ def exportar_lote_remarque_excel(codigo_proveedora, nombre_proveedora, prendas_r
         return False, "ERROR: No se pudo guardar el archivo Excel de remarque porque esta abierto."
 
 
+def exportar_prendas_disponibles_proveedora_excel(codigo_proveedora, nombre_proveedora, prendas):
+    codigo_proveedora = limpiar_texto(str(codigo_proveedora))
+    nombre_proveedora = str(nombre_proveedora or "").strip()
+
+    if not codigo_proveedora:
+        return False, "ERROR: CODIGO_PROVEEDORA es obligatorio."
+
+    prendas_disponibles = []
+    for prenda in prendas:
+        estado = str(prenda.get("estado") or "").strip().upper()
+        if estado != "DISPONIBLE":
+            continue
+
+        prendas_disponibles.append({
+            "codigo_prenda": str(prenda.get("codigo_prenda") or "").strip(),
+            "articulo": str(prenda.get("articulo") or "").strip(),
+            "marca": str(prenda.get("marca") or "").strip(),
+            "talle": str(prenda.get("talle") or "").strip(),
+            "color": str(prenda.get("color") or "").strip(),
+            "precio": prenda.get("precio", ""),
+        })
+
+    if not prendas_disponibles:
+        return False, "ERROR: No hay prendas disponibles para exportar."
+
+    try:
+        wb_export = Workbook()
+        ws_export = wb_export.active
+        ws_export.title = "DISPONIBLES"
+
+        fecha_exportacion = datetime.now().strftime("%d/%m/%Y")
+        ws_export.append(["PRENDAS DISPONIBLES"])
+        ws_export.append(["FECHA", fecha_exportacion])
+        ws_export.append(["CODIGO PROVEEDORA", codigo_proveedora])
+        ws_export.append(["NOMBRE PROVEEDORA", nombre_proveedora])
+        ws_export.append(["CANTIDAD DISPONIBLE", len(prendas_disponibles)])
+        ws_export.append([])
+        ws_export.append([
+            "CODIGO PRENDA",
+            "ARTICULO",
+            "MARCA",
+            "TALLE",
+            "COLOR",
+            "PRECIO",
+        ])
+
+        for prenda in prendas_disponibles:
+            ws_export.append([
+                prenda["codigo_prenda"],
+                prenda["articulo"],
+                prenda["marca"],
+                prenda["talle"],
+                prenda["color"],
+                prenda["precio"],
+            ])
+
+        formato_miles = "#,##0"
+        for fila in ws_export.iter_rows(min_row=8, min_col=6, max_col=6):
+            celda_precio = fila[0]
+            if isinstance(celda_precio.value, (int, float)):
+                celda_precio.number_format = formato_miles
+
+        fuente_negrita = Font(bold=True)
+        for fila in ws_export.iter_rows(min_row=1, max_row=7, max_col=6):
+            for celda in fila:
+                if celda.value:
+                    celda.font = fuente_negrita
+
+        for columna in ws_export.columns:
+            largo_maximo = 0
+            letra_columna = get_column_letter(columna[0].column)
+
+            for celda in columna:
+                valor = "" if celda.value is None else str(celda.value)
+                if len(valor) > largo_maximo:
+                    largo_maximo = len(valor)
+
+            ws_export.column_dimensions[letra_columna].width = largo_maximo + 2
+
+        carpeta_base = obtener_ruta_en_base("Proveedoras", "Prendas Disponibles")
+        os.makedirs(carpeta_base, exist_ok=True)
+
+        fecha_archivo = datetime.now().strftime("%Y-%m-%d")
+        nombre_archivo = f"disponibles_{codigo_proveedora}_{fecha_archivo}.xlsx"
+        ruta_archivo = os.path.join(carpeta_base, nombre_archivo)
+        wb_export.save(ruta_archivo)
+
+        return True, ruta_archivo
+    except PermissionError:
+        return False, "ERROR: No se pudo guardar el archivo Excel de prendas disponibles porque esta abierto."
+
+
 def obtener_lote_decision_remarque_desde_gui(codigo_proveedora):
     codigo_proveedora = limpiar_texto(str(codigo_proveedora))
 
@@ -1748,6 +1859,7 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
         codigo_proveedora_fila = str(fila[1] or "").strip().upper()
         codigo_prenda = fila[2]
         articulo = fila[3]
+        color = fila[6]
         precio_venta = fila[8]
         cliente = fila[9]
         tipo_pago = fila[10]
@@ -1774,7 +1886,9 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
                 "codigo_proveedora": codigo_proveedora_fila,
                 "codigo_prenda": codigo_prenda,
                 "articulo": articulo,
+                "color": color,
                 "precio_venta": int(precio_venta),
+                "comision_proveedora": int(precio_venta * 0.60),
                 "cliente": cliente,
                 "tipo_pago": tipo_pago,
                 "validacion": validacion
@@ -2001,6 +2115,7 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             fecha_venta = fila[0]
             codigo_prenda = fila[2]
             articulo = fila[3]
+            color = fila[6]
             precio_venta = fila[8]
             cliente = fila[9]
             tipo_pago = str(fila[10] or "").strip().upper()
@@ -2022,11 +2137,12 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
                 descuentos_proveedora.append([
                     codigo_prenda,
                     articulo,
+                    color,
                     precio_venta
                 ])
 
         ws_export.append(["RENDICION DE CUENTAS"])
-        ws_export.append(["MES", mes])
+        ws_export.append(["MES", nombre_mes(mes)])
         ws_export.append(["AÑO", anio])
         ws_export.append(["CODIGO PROVEEDORA", codigo_proveedora])
         ws_export.append(["NOMBRE PROVEEDORA", nombre_proveedora])
@@ -2035,7 +2151,9 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
         ws_export.append([
             "CODIGO PRENDA",
             "ARTICULO",
-            "PRECIO VENTA"
+            "COLOR",
+            "PRECIO VENTA",
+            "60% PROVEEDORA",
         ])
 
         for venta in ventas_rendicion:
@@ -2053,6 +2171,7 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             ws_export.append([
                 "CODIGO PRENDA",
                 "ARTICULO",
+                "COLOR",
                 "PRECIO DESCONTADO"
             ])
 
@@ -2061,10 +2180,10 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
 
         formato_miles = "#,##0"
 
-        for fila in ws_export.iter_rows(min_row=8, max_col=3):
-            celda_precio = fila[2]
-            if isinstance(celda_precio.value, (int, float)):
-                celda_precio.number_format = formato_miles
+        for fila in ws_export.iter_rows(min_row=8, max_col=5):
+            for celda in fila[3:5]:
+                if isinstance(celda.value, (int, float)):
+                    celda.number_format = formato_miles
 
         for fila in ws_export.iter_rows(min_row=1, max_col=2):
             etiqueta = str(fila[0].value or "").strip().upper()
@@ -2083,7 +2202,9 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             "NOMBRE PROVEEDORA",
             "CODIGO PRENDA",
             "ARTICULO",
+            "COLOR",
             "PRECIO VENTA",
+            "60% PROVEEDORA",
             "CANTIDAD PRENDAS",
             "MONTO A PROVEEDORA (60%)",
             "TOTAL DESCUENTOS A PROVEEDORA",
@@ -2092,20 +2213,39 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             "PRECIO DESCONTADO",
         }
 
-        for fila in ws_export.iter_rows(min_row=1, max_col=3):
+        for fila in ws_export.iter_rows(min_row=1, max_col=5):
             for celda in fila:
                 etiqueta = str(celda.value or "").strip().upper()
                 if etiqueta in etiquetas_negrita:
                     celda.font = Font(bold=True)
+        ws_export["A3"].font = Font(bold=True)
 
-        for fila in ws_export.iter_rows(min_row=1, max_col=3):
+        relleno_celeste = PatternFill(fill_type="solid", fgColor="D9EAF7")
+        etiquetas_celestes = {
+            "RENDICION DE CUENTAS",
+            "CODIGO PRENDA",
+            "ARTICULO",
+            "COLOR",
+            "60% PROVEEDORA",
+            "DETALLE DE DESCUENTOS A PROVEEDORA",
+            "PRECIO DESCONTADO",
+        }
+
+        for fila in ws_export.iter_rows(min_row=1, max_col=5):
+            for celda in fila:
+                etiqueta = str(celda.value or "").strip().upper()
+                if etiqueta in etiquetas_celestes:
+                    celda.fill = relleno_celeste
+
+        for fila in ws_export.iter_rows(min_row=1, max_col=5):
             etiqueta = str(fila[0].value or "").strip().upper()
             if etiqueta == "CODIGO PRENDA":
                 continue
             if str(fila[0].value or "").strip().upper() == "" and str(fila[1].value or "").strip().upper() == "DETALLE DE DESCUENTOS A PROVEEDORA":
                 continue
-            if len(fila) >= 3 and isinstance(fila[2].value, (int, float)):
-                fila[2].number_format = formato_miles
+            for celda in fila:
+                if isinstance(celda.value, (int, float)):
+                    celda.number_format = formato_miles
 
         for columna in ws_export.columns:
             largo_maximo = 0

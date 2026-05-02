@@ -106,3 +106,20 @@ El botón de volver queda arriba.
 3. Que sea fácil de editar.
 4. Que se vea prolijo.
 5. Que soporte crecimiento futuro.
+
+---
+
+## Flujo de entrega y Git
+
+Cuando el usuario pida dejar una version lista para probar, pasar a otra computadora o descargar desde GitHub:
+
+1. Revisar `git status --short`.
+2. Verificar sintaxis con `python -m py_compile main.py app_visual.py launcher.py`.
+3. Hacer commit con un mensaje claro.
+4. Hacer push a `main`.
+5. Si se necesita un `.exe` descargable, crear el siguiente tag `vX.X.X`.
+6. Hacer push del tag para disparar GitHub Actions.
+7. Avisar que la release puede tardar unos minutos en aparecer.
+8. Si se modifico `launcher.py`, aclarar que tambien hay que pasar el nuevo launcher, porque un launcher viejo no puede corregirse a si mismo.
+
+Nota: un push normal a `main` no genera ejecutables. La release se genera con tags `v*`.
