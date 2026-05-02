@@ -181,7 +181,11 @@ def main():
                 )
 
             actualizar_estado(ventana, label, "Descargando actualizacion...")
-            fd, ruta_temporal = tempfile.mkstemp(suffix=".exe", prefix="fashion_reset_")
+            fd, ruta_temporal = tempfile.mkstemp(
+                suffix=".exe",
+                prefix="fashion_reset_",
+                dir=CARPETA_BASE
+            )
             os.close(fd)
 
             try:
