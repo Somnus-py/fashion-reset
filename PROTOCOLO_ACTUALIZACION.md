@@ -26,6 +26,23 @@ Todo cambio se hace primero en la computadora de desarrollo.
 8. Mantener el `fashion_reset.xlsx` existente, salvo que haya una migracion planificada.
 9. Abrir la app y probar una operacion simple.
 
+## Flujo con launcher y GitHub
+
+Cuando la actualizacion se entrega por GitHub:
+
+1. Hacer commit de los cambios.
+2. Hacer push a `main`.
+3. Crear un tag nuevo `vX.X.X`.
+4. Hacer push del tag.
+5. Esperar a que GitHub Actions genere la release.
+6. Ejecutar el launcher en la computadora de uso para descargar la version nueva.
+
+Un push normal a `main` no genera ejecutables descargables. La release se genera con tags `v*`.
+
+Si cambia `launcher.py`, hay que pasar manualmente el launcher nuevo al menos una vez. Un launcher viejo no puede corregir errores propios si falla antes de descargar o instalar la actualizacion.
+
+El launcher debe descargar el archivo temporal en la misma carpeta donde esta la app. Esto evita errores de Windows al actualizar desde pendrive u otra unidad, por ejemplo cuando intenta mover un archivo desde `C:` hacia `F:`.
+
 ## Cuando solo cambia la interfaz o logica visual
 
 Si los cambios son de estetica, orden, botones, textos o comportamiento de pantalla:
