@@ -7,11 +7,13 @@ from main import (
     actualizar_venta_desde_gui,
     actualizar_prenda_desde_gui,
     buscar_ingreso_por_codigo,
+    buscar_prendas_desde_gui,
     eliminar_ingresos_desde_gui,
     obtener_prenda_desde_gui,
     obtener_venta_desde_gui,
     calcular_prendas_vencidas,
     calcular_resumen_general,
+    calcular_resumen_ventas,
     calcular_rendicion_proveedora,
     calcular_ventas_pendientes,
     crear_proveedora_desde_gui,
@@ -74,113 +76,47 @@ class AppFashionReset(ctk.CTk):
         self.frame_venta = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_consultas = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_resumen_general = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
+        self.frame_resumen_ventas = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
+        self.frame_buscador_prendas = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_pendientes_validacion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_proveedoras = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_editar = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_devolucion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_rendicion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
 
-        boton_ingreso = ctk.CTkButton(
-            self.frame_botones,
-            text="Cargar Ingreso",
-            font=FUENTE_BOTON,
-            width=220,
-            height=40,
-            fg_color="transparent",
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=0,
-            corner_radius=0,
-            command=self.abrir_ventana_ingreso
-        )
-        boton_ingreso.pack(pady=(10, 0))
+        self.boton_ingreso = self._crear_boton_menu("Cargar Ingreso", self.abrir_ventana_ingreso)
+        self.boton_ingreso.pack(pady=(10, 0))
 
-        linea_ingreso = ctk.CTkFrame(
+        self.linea_ingreso = ctk.CTkFrame(
             self.frame_botones,
             width=220,
             height=1,
             fg_color=COLOR_TEXTO
         )
-        linea_ingreso.pack(pady=(0, 10))
+        self.linea_ingreso.pack(pady=(0, 10))
 
-        self.boton_venta = ctk.CTkButton(
-            self.frame_botones,
-            text="Cargar Venta",
-            font=FUENTE_BOTON,
-            width=220,
-            height=40,
-            fg_color="transparent",
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=0,
-            corner_radius=0,
-            command=self.abrir_ventana_venta
-        )
+        self.boton_venta = self._crear_boton_menu("Cargar Venta", self.abrir_ventana_venta)
         self.boton_venta.pack(pady=10)
 
-        self.boton_consultas = ctk.CTkButton(
-            self.frame_botones,
-            text="Consultas y Rendición",
-            font=FUENTE_BOTON,
-            width=220,
-            height=40,
-            fg_color="transparent",
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=0,
-            corner_radius=0,
-            command=self.abrir_ventana_consultas
-        )
+        self.boton_consultas = self._crear_boton_menu("Consultas y Rendición", self.abrir_ventana_consultas)
         self.boton_consultas.pack(pady=10)
 
-        self.boton_proveedoras = ctk.CTkButton(
-            self.frame_botones,
-            text="Proveedoras",
-            font=FUENTE_BOTON,
-            width=220,
-            height=40,
-            fg_color="transparent",
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=0,
-            corner_radius=0,
-            command=self.abrir_ventana_proveedoras
-        )
+        self.boton_proveedoras = self._crear_boton_menu("Proveedoras", self.abrir_ventana_proveedoras)
         self.boton_proveedoras.pack(pady=10)
 
-        self.boton_editar = ctk.CTkButton(
-            self.frame_botones,
-            text="Editar",
-            font=FUENTE_BOTON,
-            width=220,
-            height=40,
-            fg_color="transparent",
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=0,
-            corner_radius=0,
-            command=self.abrir_ventana_editar
-        )
+        self.boton_editar = self._crear_boton_menu("Editar", self.abrir_ventana_editar)
         self.boton_editar.pack(pady=10)
 
-        self.boton_devolucion = ctk.CTkButton(
-            self.frame_botones,
-            text="Devolución",
-            font=FUENTE_BOTON,
-            width=220,
-            height=40,
-            fg_color="transparent",
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=0,
-            corner_radius=0,
-            command=self.abrir_modulo_devolucion
-        )
+        self.boton_devolucion = self._crear_boton_menu("Devolución", self.abrir_modulo_devolucion)
         self.boton_devolucion.pack(pady=10)
 
-        self.boton_salir = ctk.CTkButton(
+        self.boton_salir = self._crear_boton_menu("Salir", self.destroy)
+        self.boton_salir.pack(pady=20)
+
+    def _crear_boton_menu(self, texto, comando):
+        return ctk.CTkButton(
             self.frame_botones,
-            text="Salir",
+            text=texto,
             font=FUENTE_BOTON,
             width=220,
             height=40,
@@ -189,9 +125,8 @@ class AppFashionReset(ctk.CTk):
             text_color=COLOR_TEXTO,
             border_width=0,
             corner_radius=0,
-            command=self.destroy
+            command=comando
         )
-        self.boton_salir.pack(pady=20)
 
     def _configurar_icono(self):
         ruta_icono = obtener_ruta_en_base("Icono Fashion Reset.ico")
@@ -205,6 +140,8 @@ class AppFashionReset(ctk.CTk):
         self.frame_venta.pack_forget()
         self.frame_consultas.pack_forget()
         self.frame_resumen_general.pack_forget()
+        self.frame_resumen_ventas.pack_forget()
+        self.frame_buscador_prendas.pack_forget()
         self.frame_pendientes_validacion.pack_forget()
         self.frame_proveedoras.pack_forget()
         self.frame_editar.pack_forget()
@@ -349,14 +286,13 @@ class AppFashionReset(ctk.CTk):
             widget.destroy()
 
         self.filas_venta = []
+        self.filas_venta_navegacion = []
         self.fila_actual_venta = 1
-        self.frame_contenido_venta = ctk.CTkScrollableFrame(self.frame_venta, fg_color=COLOR_FONDO)
-        self.frame_contenido_venta.pack(fill="both", expand=True)
 
-        self._crear_encabezado(self.frame_contenido_venta, "CARGAR VENTA", self.volver_menu_principal)
+        self._crear_encabezado(self.frame_venta, "CARGAR VENTA", self.volver_menu_principal)
 
-        frame_lote = ctk.CTkFrame(self.frame_contenido_venta, fg_color=COLOR_FONDO)
-        frame_lote.pack(fill="x", padx=20, pady=10)
+        frame_lote = ctk.CTkFrame(self.frame_venta, fg_color=COLOR_FONDO)
+        frame_lote.pack(fill="x", padx=20, pady=(0, 8))
 
         label_fecha = ctk.CTkLabel(frame_lote, text="Fecha venta", text_color=COLOR_TEXTO)
         label_fecha.grid(row=0, column=0, padx=10, pady=5, sticky="w")
@@ -379,36 +315,11 @@ class AppFashionReset(ctk.CTk):
         ]
         self.validacion_opciones = ["PENDIENTE", "PAGADO"]
 
-        self.frame_tabla_venta = ctk.CTkFrame(self.frame_contenido_venta, fg_color=COLOR_FONDO)
-        self.frame_tabla_venta.pack(fill="x", padx=20, pady=(10, 0))
+        frame_acciones = ctk.CTkFrame(self.frame_venta, fg_color=COLOR_FONDO)
+        frame_acciones.pack(fill="x", padx=20, pady=(0, 8))
+        frame_acciones.grid_columnconfigure(0, weight=1)
 
-        encabezados = [
-            "CÓDIGO PRENDA",
-            "ARTÍCULO",
-            "MARCA",
-            "TALLE",
-            "COLOR",
-            "PRECIO VENTA",
-            "TIPO PAGO",
-            "VALIDACIÓN",
-            "OBS VENTA"
-        ]
-        for col, encabezado in enumerate(encabezados):
-            label = ctk.CTkLabel(
-                self.frame_tabla_venta,
-                text=encabezado,
-                text_color=COLOR_TEXTO,
-                font=FUENTE_BOTON
-            )
-            label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
-
-        self.agregar_filas_venta(10)
-
-        frame_botones_inferiores = ctk.CTkFrame(self.frame_venta, fg_color=COLOR_FONDO)
-        frame_botones_inferiores.pack(fill="x", padx=20, pady=(10, 0))
-        frame_botones_inferiores.grid_columnconfigure(0, weight=1)
-
-        frame_acciones_izquierda = ctk.CTkFrame(frame_botones_inferiores, fg_color=COLOR_FONDO)
+        frame_acciones_izquierda = ctk.CTkFrame(frame_acciones, fg_color=COLOR_FONDO)
         frame_acciones_izquierda.grid(row=0, column=0, sticky="w")
 
         self.label_total_venta = ctk.CTkLabel(
@@ -433,7 +344,7 @@ class AppFashionReset(ctk.CTk):
         boton_agregar_filas.pack(side="left", padx=0)
 
         boton_guardar = ctk.CTkButton(
-            frame_botones_inferiores,
+            frame_acciones,
             text="Guardar lote",
             font=FUENTE_BOTON,
             fg_color=COLOR_FONDO,
@@ -444,6 +355,34 @@ class AppFashionReset(ctk.CTk):
             command=lambda: self.guardar_lote_venta(entry_fecha, entry_cliente)
         )
         boton_guardar.grid(row=0, column=1, padx=10, sticky="e")
+
+        self.frame_contenido_venta = ctk.CTkScrollableFrame(self.frame_venta, fg_color=COLOR_FONDO)
+        self.frame_contenido_venta.pack(fill="both", expand=True)
+
+        self.frame_tabla_venta = ctk.CTkFrame(self.frame_contenido_venta, fg_color=COLOR_FONDO)
+        self.frame_tabla_venta.pack(fill="x", padx=20, pady=(0, 10))
+
+        encabezados = [
+            "CÓDIGO PRENDA",
+            "ARTÍCULO",
+            "MARCA",
+            "TALLE",
+            "COLOR",
+            "PRECIO VENTA",
+            "TIPO PAGO",
+            "VALIDACIÓN",
+            "OBS VENTA"
+        ]
+        for col, encabezado in enumerate(encabezados):
+            label = ctk.CTkLabel(
+                self.frame_tabla_venta,
+                text=encabezado,
+                text_color=COLOR_TEXTO,
+                font=FUENTE_BOTON
+            )
+            label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+
+        self.agregar_filas_venta(10)
         self._resetear_scroll(self.frame_contenido_venta)
 
     def abrir_ventana_consultas(self):
@@ -497,6 +436,36 @@ class AppFashionReset(ctk.CTk):
         )
         boton_resumen_general.pack(anchor="w", pady=(0, 10))
 
+        boton_resumen_ventas = ctk.CTkButton(
+            frame_contenido,
+            text="Resumen de ventas",
+            font=FUENTE_BOTON,
+            width=280,
+            height=42,
+            fg_color=COLOR_FONDO,
+            hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO,
+            command=self.abrir_ventana_resumen_ventas
+        )
+        boton_resumen_ventas.pack(anchor="w", pady=(0, 10))
+
+        boton_buscador = ctk.CTkButton(
+            frame_contenido,
+            text="Buscador de prendas",
+            font=FUENTE_BOTON,
+            width=280,
+            height=42,
+            fg_color=COLOR_FONDO,
+            hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO,
+            command=self.abrir_buscador_prendas
+        )
+        boton_buscador.pack(anchor="w", pady=(0, 10))
+
         boton_pendientes = ctk.CTkButton(
             frame_contenido,
             text="Ventas pendientes de validación",
@@ -511,14 +480,6 @@ class AppFashionReset(ctk.CTk):
             command=self.abrir_ventana_pendientes_validacion
         )
         boton_pendientes.pack(anchor="w", pady=(0, 10))
-
-        label_pendiente = ctk.CTkLabel(
-            frame_contenido,
-            text="Las demás consultas las podemos ir agregando una por una.",
-            font=FUENTE_SUBTITULO,
-            text_color="#555555"
-        )
-        label_pendiente.pack(anchor="w", pady=(10, 0))
 
     def abrir_ventana_proveedoras(self):
         self._ocultar_frames_secundarios()
@@ -1496,6 +1457,174 @@ class AppFashionReset(ctk.CTk):
         self.textbox_resumen_general.insert("1.0", "Todavía no hay resultados para mostrar.")
         self.textbox_resumen_general.configure(state="disabled")
 
+    def abrir_ventana_resumen_ventas(self):
+        self._ocultar_frames_secundarios()
+        self.frame_botones.pack_forget()
+        self.frame_resumen_ventas.pack(pady=(5, 10), padx=30, fill="both", expand=True)
+
+        for widget in self.frame_resumen_ventas.winfo_children():
+            widget.destroy()
+
+        self._crear_encabezado(self.frame_resumen_ventas, "RESUMEN DE VENTAS", self.abrir_ventana_consultas)
+
+        hoy = datetime.now().strftime("%d/%m/%Y")
+
+        frame_filtros = ctk.CTkFrame(self.frame_resumen_ventas, fg_color=COLOR_FONDO)
+        frame_filtros.pack(fill="x", padx=20, pady=10)
+
+        ctk.CTkLabel(frame_filtros, text="Desde", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        self.entry_resumen_ventas_desde = ctk.CTkEntry(frame_filtros, width=120)
+        self.entry_resumen_ventas_desde.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.entry_resumen_ventas_desde.insert(0, hoy)
+        self._aplicar_mascara_fecha(self.entry_resumen_ventas_desde)
+
+        ctk.CTkLabel(frame_filtros, text="Hasta", text_color=COLOR_TEXTO).grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.entry_resumen_ventas_hasta = ctk.CTkEntry(frame_filtros, width=120)
+        self.entry_resumen_ventas_hasta.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        self.entry_resumen_ventas_hasta.insert(0, hoy)
+        self._aplicar_mascara_fecha(self.entry_resumen_ventas_hasta)
+
+        boton_buscar = ctk.CTkButton(
+            frame_filtros,
+            text="Buscar ventas",
+            font=FUENTE_BOTON,
+            fg_color=COLOR_FONDO,
+            hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO,
+            command=self.buscar_resumen_ventas
+        )
+        boton_buscar.grid(row=1, column=2, padx=10, pady=5, sticky="w")
+
+        self.label_resumen_ventas_estado = ctk.CTkLabel(
+            self.frame_resumen_ventas,
+            text="Ingresá un rango de fechas para ver las ventas.",
+            text_color="#555555",
+            font=FUENTE_SUBTITULO
+        )
+        self.label_resumen_ventas_estado.pack(fill="x", padx=20, pady=(0, 10))
+
+        frame_resumen = ctk.CTkFrame(self.frame_resumen_ventas, fg_color=COLOR_FONDO)
+        frame_resumen.pack(fill="x", padx=20, pady=(0, 10))
+
+        self.resumen_ventas_vars = {
+            "cantidad_ventas": ctk.StringVar(value="-"),
+            "cantidad_pagadas": ctk.StringVar(value="-"),
+            "cantidad_pendientes": ctk.StringVar(value="-"),
+            "total_vendido": ctk.StringVar(value="-"),
+            "total_pagado": ctk.StringVar(value="-"),
+            "total_pendiente": ctk.StringVar(value="-"),
+            "total_descuentos": ctk.StringVar(value="-"),
+            "ganancia": ctk.StringVar(value="-"),
+        }
+
+        labels_resumen = [
+            ("Ventas", "cantidad_ventas"),
+            ("Pagadas", "cantidad_pagadas"),
+            ("Pendientes", "cantidad_pendientes"),
+            ("Total vendido", "total_vendido"),
+            ("Total pagado", "total_pagado"),
+            ("Total pendiente", "total_pendiente"),
+            ("Descuentos a proveedoras", "total_descuentos"),
+            ("GANANCIA", "ganancia"),
+        ]
+
+        for indice, (texto, clave) in enumerate(labels_resumen):
+            fila = indice // 2
+            columna = (indice % 2) * 2
+            fuente = FUENTE_BOTON if clave == "ganancia" else FUENTE_SUBTITULO
+            ctk.CTkLabel(
+                frame_resumen,
+                text=f"{texto}:",
+                text_color=COLOR_TEXTO,
+                font=fuente
+            ).grid(row=fila, column=columna, padx=(0, 8), pady=6, sticky="w")
+            ctk.CTkLabel(
+                frame_resumen,
+                textvariable=self.resumen_ventas_vars[clave],
+                text_color=COLOR_TEXTO,
+                font=fuente
+            ).grid(row=fila, column=columna + 1, padx=(0, 20), pady=6, sticky="w")
+
+        label_detalle = ctk.CTkLabel(
+            self.frame_resumen_ventas,
+            text="Detalle de ventas",
+            text_color=COLOR_TEXTO,
+            font=FUENTE_FORMULARIO_TITULO
+        )
+        label_detalle.pack(anchor="w", padx=20, pady=(10, 5))
+
+        self.textbox_resumen_ventas = ctk.CTkTextbox(
+            self.frame_resumen_ventas,
+            height=280,
+            fg_color=COLOR_FONDO,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO
+        )
+        self.textbox_resumen_ventas.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self.textbox_resumen_ventas.configure(font=("Consolas", 13))
+        self.textbox_resumen_ventas.insert("1.0", "Todavía no hay resultados para mostrar.")
+        self.textbox_resumen_ventas.configure(state="disabled")
+
+    def abrir_buscador_prendas(self):
+        self._ocultar_frames_secundarios()
+        self.frame_botones.pack_forget()
+        self.frame_buscador_prendas.pack(pady=(5, 10), padx=30, fill="both", expand=True)
+
+        for widget in self.frame_buscador_prendas.winfo_children():
+            widget.destroy()
+
+        self._crear_encabezado(self.frame_buscador_prendas, "BUSCADOR DE PRENDAS", self.abrir_ventana_consultas)
+
+        frame_busqueda = ctk.CTkFrame(self.frame_buscador_prendas, fg_color=COLOR_FONDO)
+        frame_busqueda.pack(fill="x", padx=20, pady=10)
+
+        ctk.CTkLabel(
+            frame_busqueda,
+            text="Buscar",
+            text_color=COLOR_TEXTO
+        ).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+
+        self.entry_buscador_prendas = ctk.CTkEntry(frame_busqueda, width=260)
+        self.entry_buscador_prendas.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.entry_buscador_prendas.bind("<Return>", lambda event: self.buscar_prendas_desde_pantalla())
+
+        boton_buscar = ctk.CTkButton(
+            frame_busqueda,
+            text="Buscar",
+            font=FUENTE_BOTON,
+            fg_color=COLOR_FONDO,
+            hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO,
+            command=self.buscar_prendas_desde_pantalla
+        )
+        boton_buscar.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+
+        self.label_buscador_estado = ctk.CTkLabel(
+            self.frame_buscador_prendas,
+            text="Buscá por código, color, cliente, marca, artículo, proveedora o estado.",
+            text_color="#555555",
+            font=FUENTE_SUBTITULO
+        )
+        self.label_buscador_estado.pack(fill="x", padx=20, pady=(0, 10))
+
+        self.textbox_buscador_prendas = ctk.CTkTextbox(
+            self.frame_buscador_prendas,
+            height=360,
+            fg_color=COLOR_FONDO,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO
+        )
+        self.textbox_buscador_prendas.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self.textbox_buscador_prendas.configure(font=("Consolas", 13))
+        self.textbox_buscador_prendas.insert("1.0", "Todavía no hay resultados para mostrar.")
+        self.textbox_buscador_prendas.configure(state="disabled")
+
     def abrir_ventana_pendientes_validacion(self):
         self._ocultar_frames_secundarios()
         self.frame_botones.pack_forget()
@@ -2153,6 +2282,55 @@ class AppFashionReset(ctk.CTk):
         self.resumen_general_vars["total_neto_a_pagar"].set(self._format_moneda(datos["total_neto_a_pagar"]))
         self._mostrar_desglose_resumen_general(
             self._construir_tabla_resumen_general(datos["detalle_proveedoras"])
+        )
+
+    def buscar_resumen_ventas(self):
+        resultado, datos = calcular_resumen_ventas(
+            self.entry_resumen_ventas_desde.get().strip(),
+            self.entry_resumen_ventas_hasta.get().strip()
+        )
+
+        if not resultado:
+            self.label_resumen_ventas_estado.configure(text=datos, text_color="#B00020")
+            self._limpiar_resumen_ventas()
+            self._mostrar_resumen_ventas("No se encontraron resultados para mostrar.")
+            return
+
+        self.label_resumen_ventas_estado.configure(
+            text=(
+                "Resumen generado para "
+                f"{datos['fecha_desde'].strftime('%d/%m/%Y')} - {datos['fecha_hasta'].strftime('%d/%m/%Y')}."
+            ),
+            text_color="#2E5E2E"
+        )
+        self.resumen_ventas_vars["cantidad_ventas"].set(str(datos["cantidad_ventas"]))
+        self.resumen_ventas_vars["cantidad_pagadas"].set(str(datos["cantidad_pagadas"]))
+        self.resumen_ventas_vars["cantidad_pendientes"].set(str(datos["cantidad_pendientes"]))
+        self.resumen_ventas_vars["total_vendido"].set(self._format_moneda(datos["total_vendido"]))
+        self.resumen_ventas_vars["total_pagado"].set(self._format_moneda(datos["total_pagado"]))
+        self.resumen_ventas_vars["total_pendiente"].set(self._format_moneda(datos["total_pendiente"]))
+        self.resumen_ventas_vars["total_descuentos"].set(self._format_moneda(datos["total_descuentos"]))
+        self.resumen_ventas_vars["ganancia"].set(self._format_moneda(datos["ganancia"]))
+        self._mostrar_resumen_ventas(
+            self._construir_tabla_resumen_ventas(datos["ventas"])
+        )
+
+    def buscar_prendas_desde_pantalla(self):
+        resultado, datos = buscar_prendas_desde_gui(
+            self.entry_buscador_prendas.get().strip()
+        )
+
+        if not resultado:
+            self.label_buscador_estado.configure(text=datos, text_color="#B00020")
+            self._mostrar_buscador_prendas("No se encontraron resultados para mostrar.")
+            return
+
+        self.label_buscador_estado.configure(
+            text=f"Se encontraron {datos['cantidad']} prendas para: {datos['texto_busqueda']}.",
+            text_color="#2E5E2E"
+        )
+        self._mostrar_buscador_prendas(
+            self._construir_tabla_buscador_prendas(datos["resultados"])
         )
 
     def buscar_ventas_pendientes(self):
@@ -3095,6 +3273,10 @@ class AppFashionReset(ctk.CTk):
         for variable in self.resumen_general_vars.values():
             variable.set("-")
 
+    def _limpiar_resumen_ventas(self):
+        for variable in self.resumen_ventas_vars.values():
+            variable.set("-")
+
     def _limpiar_pendientes_validacion(self):
         for variable in self.pendientes_vars.values():
             variable.set("-")
@@ -3172,6 +3354,18 @@ class AppFashionReset(ctk.CTk):
         self.textbox_resumen_general.insert("1.0", texto)
         self.textbox_resumen_general.configure(state="disabled")
 
+    def _mostrar_resumen_ventas(self, texto):
+        self.textbox_resumen_ventas.configure(state="normal")
+        self.textbox_resumen_ventas.delete("1.0", "end")
+        self.textbox_resumen_ventas.insert("1.0", texto)
+        self.textbox_resumen_ventas.configure(state="disabled")
+
+    def _mostrar_buscador_prendas(self, texto):
+        self.textbox_buscador_prendas.configure(state="normal")
+        self.textbox_buscador_prendas.delete("1.0", "end")
+        self.textbox_buscador_prendas.insert("1.0", texto)
+        self.textbox_buscador_prendas.configure(state="disabled")
+
     def _mostrar_ventas_pendientes(self, texto):
         self.textbox_pendientes.configure(state="normal")
         self.textbox_pendientes.delete("1.0", "end")
@@ -3240,6 +3434,118 @@ class AppFashionReset(ctk.CTk):
                 celdas.append(texto.ljust(ancho))
 
             tabla.append(" | ".join(celdas))
+
+        return "\n".join(tabla)
+
+    def _construir_tabla_resumen_ventas(self, filas):
+        if not filas:
+            return "Todavía no hay resultados para mostrar."
+
+        columnas = [
+            ("FECHA", 12),
+            ("PROVEEDORA", 12),
+            ("CODIGO", 12),
+            ("ARTICULO", 18),
+            ("COLOR", 12),
+            ("PRECIO", 12),
+            ("CLIENTE", 16),
+            ("TIPO PAGO", 18),
+            ("VALIDACION", 12),
+        ]
+
+        encabezado = " | ".join(titulo.ljust(ancho) for titulo, ancho in columnas)
+        separador = "-+-".join("-" * ancho for _, ancho in columnas)
+        tabla = [encabezado, separador]
+
+        for fila in filas:
+            valores = [
+                self._formatear_fecha(fila["fecha_venta"]),
+                str(fila["codigo_proveedora"] or ""),
+                str(fila["codigo_prenda"] or ""),
+                str(fila["articulo"] or ""),
+                str(fila["color"] or ""),
+                self._format_moneda(fila["precio_venta"]),
+                str(fila["cliente"] or ""),
+                str(fila["tipo_pago"] or ""),
+                str(fila["validacion"] or ""),
+            ]
+
+            celdas = []
+            for indice, valor in enumerate(valores):
+                ancho = columnas[indice][1]
+                texto = str(valor)
+                if len(texto) > ancho:
+                    texto = texto[: ancho - 1] + "."
+                celdas.append(texto.ljust(ancho))
+
+            tabla.append(" | ".join(celdas))
+
+        return "\n".join(tabla)
+
+    def _construir_tabla_buscador_prendas(self, filas):
+        if not filas:
+            return "Todavía no hay resultados para mostrar."
+
+        columnas = [
+            ("CODIGO", 12),
+            ("PROV", 8),
+            ("ARTICULO", 16),
+            ("MARCA", 12),
+            ("TALLE", 8),
+            ("COLOR", 10),
+            ("ESTADO", 11),
+            ("INGRESO", 10),
+            ("VENTA", 10),
+            ("P.VENTA", 12),
+            ("CLIENTE", 14),
+            ("VALIDACION", 10),
+        ]
+
+        encabezado = " | ".join(titulo.ljust(ancho) for titulo, ancho in columnas)
+        separador = "-+-".join("-" * ancho for _, ancho in columnas)
+        tabla = [encabezado, separador]
+
+        for fila in filas:
+            precio_venta = fila["precio_venta"]
+            precio_venta_texto = (
+                self._format_moneda(precio_venta)
+                if isinstance(precio_venta, (int, float))
+                else str(precio_venta or "")
+            )
+            valores = [
+                str(fila["codigo_prenda"] or ""),
+                str(fila["codigo_proveedora"] or ""),
+                str(fila["articulo"] or ""),
+                str(fila["marca"] or ""),
+                str(fila["talle"] or ""),
+                str(fila["color"] or ""),
+                str(fila["estado"] or ""),
+                self._formatear_fecha(fila["fecha_ingreso"]),
+                self._formatear_fecha(fila["fecha_venta"]),
+                precio_venta_texto,
+                str(fila["cliente"] or ""),
+                str(fila["validacion"] or ""),
+            ]
+
+            celdas = []
+            for indice, valor in enumerate(valores):
+                ancho = columnas[indice][1]
+                texto = str(valor)
+                if len(texto) > ancho:
+                    texto = texto[: ancho - 1] + "."
+                celdas.append(texto.ljust(ancho))
+
+            tabla.append(" | ".join(celdas))
+
+            obs = []
+            if fila["tipo_pago"]:
+                obs.append(f"Tipo pago: {fila['tipo_pago']}")
+            if fila["obs_ingreso"]:
+                obs.append(f"Obs ingreso: {fila['obs_ingreso']}")
+            if fila["obs_venta"]:
+                obs.append(f"Obs venta: {fila['obs_venta']}")
+            if obs:
+                tabla.append("  " + " | ".join(obs))
 
         return "\n".join(tabla)
 
@@ -3588,7 +3894,7 @@ class AppFashionReset(ctk.CTk):
 
     def _autocompletar_y_navegar_venta(self, event, fila_indice, col_indice):
         self._autocompletar_venta(event, fila_indice)
-        return self._navegar_entrada(event, self.filas_venta, fila_indice, col_indice)
+        return self._navegar_entrada(event, self.filas_venta_navegacion, fila_indice, col_indice)
 
     def _parse_precio(self, texto):
         texto = str(texto or "").strip()
@@ -3785,15 +4091,20 @@ class AppFashionReset(ctk.CTk):
                 entry_obs_venta
             ]
 
-            for col_indice, entrada in enumerate(fila_entradas):
-                entrada.bind("<Return>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
-                entrada.bind("<KP_Enter>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
-                entrada.bind("<Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
-                entrada.bind("<Shift-Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
-                entrada.bind("<Right>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
-                entrada.bind("<Left>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
-                entrada.bind("<Down>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
-                entrada.bind("<Up>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta, r, c))
+            fila_navegacion = [
+                entry_codigo,
+                entry_obs_venta
+            ]
+
+            for col_indice, entrada in enumerate(fila_navegacion):
+                entrada.bind("<Return>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
+                entrada.bind("<KP_Enter>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
+                entrada.bind("<Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
+                entrada.bind("<Shift-Tab>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
+                entrada.bind("<Right>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
+                entrada.bind("<Left>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
+                entrada.bind("<Down>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
+                entrada.bind("<Up>", lambda event, r=fila_indice, c=col_indice: self._navegar_entrada(event, self.filas_venta_navegacion, r, c))
 
             entry_codigo.bind("<Return>", lambda event, r=fila_indice, c=0: self._autocompletar_y_navegar_venta(event, r, c))
             entry_codigo.bind("<KP_Enter>", lambda event, r=fila_indice, c=0: self._autocompletar_y_navegar_venta(event, r, c))
@@ -3801,6 +4112,7 @@ class AppFashionReset(ctk.CTk):
             entry_codigo.bind("<FocusOut>", lambda event, r=fila_indice: self._autocompletar_venta(event, r))
 
             self.filas_venta.append(fila_entradas)
+            self.filas_venta_navegacion.append(fila_navegacion)
             self.fila_actual_venta += 1
 
         self._actualizar_total_venta()

@@ -105,10 +105,8 @@ def _asegurar_columnas_remarque(ws_ingresos):
 
     return encabezados_actuales
 
-                                                
-                                                
-                                                
-                                                #CARGA DE INGRESO
+
+# CARGA DE INGRESO
 # ABRIR ARCHIVO EXCEL Y HOJA INGRESOS
 def _guardar_ingreso_en_excel(
     fecha_ingreso,
@@ -703,6 +701,111 @@ def calcular_resumen_general(mes_texto, anio_texto):
         "total_descuentos": total_descuentos,
         "total_neto_a_pagar": total_neto_a_pagar,
         "detalle_proveedoras": detalle_proveedoras
+    }
+
+
+def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
+    try:
+        fecha_desde = convertir_fecha(normalizar_fecha_usuario(fecha_desde_texto)).date()
+        fecha_hasta = convertir_fecha(normalizar_fecha_usuario(fecha_hasta_texto)).date()
+    except ValueError:
+        return False, "ERROR: Fechas invalidas. Usa el formato DD/MM/YY o DD/MM/YYYY."
+
+    if fecha_desde > fecha_hasta:
+        return False, "ERROR: La fecha desde no puede ser mayor que la fecha hasta."
+
+    try:
+        wb = load_workbook(ARCHIVO_EXCEL)
+        ws_ventas = wb["VENTAS"]
+    except PermissionError:
+        return False, "ERROR: Cierra el archivo Excel antes de continuar."
+    except FileNotFoundError:
+        return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
+    except KeyError:
+        return False, "ERROR: No existe la hoja VENTAS en el archivo Excel."
+
+    cantidad_ventas = 0
+    cantidad_pagadas = 0
+    cantidad_pendientes = 0
+    total_vendido = 0
+    total_pagado = 0
+    total_pendiente = 0
+    total_descuentos = 0
+    ventas = []
+
+    for fila in ws_ventas.iter_rows(min_row=2, values_only=True):
+        fecha_venta = fila[0]
+        codigo_proveedora = fila[1]
+        codigo_prenda = fila[2]
+        articulo = fila[3]
+        marca = fila[4]
+        talle = fila[5]
+        color = fila[6]
+        precio_venta = fila[8]
+        cliente = fila[9]
+        tipo_pago = str(fila[10] or "").strip().upper()
+        validacion = str(fila[11] or "").strip().upper()
+        obs_venta = fila[12]
+
+        try:
+            fecha_obj = convertir_fecha(fecha_venta).date()
+        except Exception:
+            continue
+
+        if fecha_obj < fecha_desde or fecha_obj > fecha_hasta:
+            continue
+
+        if not isinstance(precio_venta, (int, float)):
+            precio_venta = 0
+        else:
+            precio_venta = int(precio_venta)
+
+        cantidad_ventas += 1
+        total_vendido += precio_venta
+
+        if validacion == "PAGADO":
+            cantidad_pagadas += 1
+            total_pagado += precio_venta
+        elif validacion == "PENDIENTE":
+            cantidad_pendientes += 1
+            total_pendiente += precio_venta
+
+        if tipo_pago == "DESCUENTO A PROVEEDORA":
+            total_descuentos += precio_venta
+
+        ventas.append({
+            "fecha_venta": fecha_obj,
+            "codigo_proveedora": str(codigo_proveedora or "").strip().upper(),
+            "codigo_prenda": str(codigo_prenda or "").strip().upper(),
+            "articulo": str(articulo or "").strip(),
+            "marca": str(marca or "").strip(),
+            "talle": str(talle or "").strip(),
+            "color": str(color or "").strip(),
+            "precio_venta": precio_venta,
+            "cliente": str(cliente or "").strip(),
+            "tipo_pago": tipo_pago,
+            "validacion": validacion,
+            "obs_venta": str(obs_venta or "").strip(),
+        })
+
+    if cantidad_ventas == 0:
+        return False, "NO SE ENCONTRARON VENTAS EN ESE RANGO DE FECHAS."
+
+    ventas.sort(key=lambda venta: (venta["fecha_venta"], venta["codigo_prenda"]))
+    ganancia = int(total_pagado * 0.40)
+
+    return True, {
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "cantidad_ventas": cantidad_ventas,
+        "cantidad_pagadas": cantidad_pagadas,
+        "cantidad_pendientes": cantidad_pendientes,
+        "total_vendido": total_vendido,
+        "total_pagado": total_pagado,
+        "total_pendiente": total_pendiente,
+        "total_descuentos": total_descuentos,
+        "ganancia": ganancia,
+        "ventas": ventas,
     }
 
 
@@ -2197,7 +2300,7 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
         etiquetas_negrita = {
             "RENDICION DE CUENTAS",
             "MES",
-            "AÃ‘O",
+            "AÑO",
             "CODIGO PROVEEDORA",
             "NOMBRE PROVEEDORA",
             "CODIGO PRENDA",
@@ -2434,6 +2537,60 @@ def obtener_prenda_desde_gui(codigo_prenda):
             }
 
     return False, "ERROR: NO SE ENCONTRO LA PRENDA."
+
+
+def buscar_prendas_desde_gui(texto_busqueda):
+    texto_busqueda = limpiar_texto(str(texto_busqueda))
+
+    if not texto_busqueda:
+        return False, "ERROR: Ingresa un texto para buscar."
+
+    try:
+        wb = load_workbook(ARCHIVO_EXCEL)
+        ws_ingresos = wb["INGRESOS"]
+    except PermissionError:
+        return False, "ERROR: Cierra el archivo Excel antes de continuar."
+    except FileNotFoundError:
+        return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
+    except KeyError:
+        return False, "ERROR: No existe la hoja INGRESOS en el archivo Excel."
+
+    resultados = []
+
+    for fila in ws_ingresos.iter_rows(min_row=2, values_only=True):
+        datos = {
+            "fecha_ingreso": fila[0],
+            "codigo_proveedora": str(fila[1] or "").strip().upper(),
+            "codigo_prenda": str(fila[2] or "").strip().upper(),
+            "articulo": str(fila[3] or "").strip(),
+            "marca": str(fila[4] or "").strip(),
+            "talle": str(fila[5] or "").strip(),
+            "color": str(fila[6] or "").strip(),
+            "precio_lista": fila[7] if isinstance(fila[7], (int, float)) else str(fila[7] or "").strip(),
+            "estado": str(fila[8] or "").strip().upper(),
+            "fecha_venta": fila[9],
+            "precio_venta": fila[10] if isinstance(fila[10], (int, float)) else str(fila[10] or "").strip(),
+            "cliente": str(fila[11] or "").strip(),
+            "tipo_pago": str(fila[12] or "").strip().upper(),
+            "validacion": str(fila[13] or "").strip().upper(),
+            "obs_ingreso": str(fila[14] or "").strip(),
+            "obs_venta": str(fila[15] or "").strip(),
+        }
+
+        texto_fila = limpiar_texto(" ".join(str(valor or "") for valor in datos.values()))
+        if texto_busqueda in texto_fila:
+            resultados.append(datos)
+
+    if not resultados:
+        return False, "NO SE ENCONTRARON PRENDAS CON ESA BUSQUEDA."
+
+    resultados.sort(key=lambda item: (item["codigo_proveedora"], item["codigo_prenda"]))
+
+    return True, {
+        "texto_busqueda": texto_busqueda,
+        "cantidad": len(resultados),
+        "resultados": resultados,
+    }
 
 
 def actualizar_prenda_desde_gui(
@@ -3536,7 +3693,7 @@ def submenu_proveedoras():
 
 
 
-                                            # MENU PRINCIPAL
+# MENU PRINCIPAL
 def mostrar_menu():
     while True:
         print("1 - CARGAR INGRESO")
@@ -3555,8 +3712,8 @@ def mostrar_menu():
         if opcion == "1":
             # PEDIR FECHA UNA SOLA VEZ PARA TODO EL LOTE
             fecha_lote = input("FECHA_INGRESO DEL LOTE (DD-MM-YYYY): ").strip()
-            # PEDRI CODIGO_PROVEEDORA UNA SOLA VEZ PARA TODO EL LOTE
-            codigo_proveedora = limpiar_texto(input("CODIGO_PROVEEDORA DEL LOTE: ")) 
+            # PEDIR CODIGO_PROVEEDORA UNA SOLA VEZ PARA TODO EL LOTE
+            codigo_proveedora = limpiar_texto(input("CODIGO_PROVEEDORA DEL LOTE: "))
             if not codigo_proveedora:
                 print("ERROR: CODIGO_PROVEEDORA es obligatorio.")
                 continue
@@ -3604,6 +3761,6 @@ def mostrar_menu():
             break
 
 
-                                    # INICIO DEL PROGRAMA
+# INICIO DEL PROGRAMA
 if __name__ == "__main__":
     mostrar_menu()
