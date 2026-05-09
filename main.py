@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 
 from openpyxl import load_workbook
@@ -17,10 +18,50 @@ def _obtener_carpeta_base():
 
 CARPETA_BASE = _obtener_carpeta_base()
 ARCHIVO_EXCEL = os.path.join(CARPETA_BASE, "fashion_reset.xlsx")
+CARPETA_BACKUPS = os.path.join(CARPETA_BASE, "backups")
+MAX_BACKUPS = 50
 
 
 def obtener_ruta_en_base(*partes):
     return os.path.join(CARPETA_BASE, *partes)
+
+
+def crear_backup_excel():
+    if not os.path.exists(ARCHIVO_EXCEL) or os.path.getsize(ARCHIVO_EXCEL) == 0:
+        return
+
+    os.makedirs(CARPETA_BACKUPS, exist_ok=True)
+    fecha_hora = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ruta_backup = os.path.join(CARPETA_BACKUPS, f"backup_{fecha_hora}.xlsx")
+
+    contador = 1
+    while os.path.exists(ruta_backup):
+        ruta_backup = os.path.join(CARPETA_BACKUPS, f"backup_{fecha_hora}_{contador}.xlsx")
+        contador += 1
+
+    shutil.copy2(ARCHIVO_EXCEL, ruta_backup)
+    rotar_backups()
+
+
+def rotar_backups():
+    if not os.path.exists(CARPETA_BACKUPS):
+        return
+
+    backups = [
+        os.path.join(CARPETA_BACKUPS, nombre)
+        for nombre in os.listdir(CARPETA_BACKUPS)
+        if nombre.startswith("backup_") and nombre.endswith(".xlsx")
+    ]
+
+    backups.sort(key=os.path.getmtime, reverse=True)
+
+    for backup_viejo in backups[MAX_BACKUPS:]:
+        os.remove(backup_viejo)
+
+
+def guardar_archivo_excel(wb):
+    crear_backup_excel()
+    wb.save(ARCHIVO_EXCEL)
 
 # FUNCION AUXILIAR PARA LIMPIAR TEXTOS
 def limpiar_texto(texto):
@@ -191,7 +232,7 @@ def _guardar_ingreso_en_excel(
     ])
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -344,7 +385,7 @@ def guardar_venta_desde_gui(
     ])
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -584,7 +625,7 @@ ESTADO: {estado}
 
         # GUARDAR CAMBIOS EN EL EXCEL
         try:
-            wb.save(ARCHIVO_EXCEL)
+            guardar_archivo_excel(wb)
             print(f"""
 VENTA REGISTRADA CORRECTAMENTE
 CODIGO_PRENDA: {codigo_prenda}
@@ -1151,7 +1192,7 @@ def registrar_remarque_desde_gui(codigo_prenda, precio_remarcado_texto, fecha_re
     fila_prenda[encabezados["DECISION_PROVEEDORA"] - 1].value = "PENDIENTE"
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -1350,7 +1391,7 @@ def guardar_lote_remarque_desde_gui(codigo_proveedora, prendas_remarque, fecha_r
         })
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -1730,7 +1771,7 @@ def guardar_decisiones_remarque_desde_gui(codigo_proveedora, decisiones):
         return False, "ERROR: No hay decisiones nuevas para aplicar."
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -1782,7 +1823,7 @@ def validar_venta_pendiente_por_codigo(codigo_prenda):
             break
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -1911,7 +1952,7 @@ def validar_venta_pendiente():
             fila[13].value = "PAGADO"
             break
 
-    wb.save(ARCHIVO_EXCEL)
+    guardar_archivo_excel(wb)
     print("VENTA VALIDADA CORRECTAMENTE.")
 
 
@@ -2499,7 +2540,7 @@ def actualizar_venta_desde_gui(
     fila_ingreso[15].value = obs_venta
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -2647,7 +2688,7 @@ def actualizar_prenda_desde_gui(
     fila_prenda[14].value = obs_ingreso
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -2688,7 +2729,7 @@ def registrar_devolucion_desde_gui(codigo_prenda):
     fila_prenda[8].value = "DEVUELTO"
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -2777,7 +2818,7 @@ def editar_prenda():
     fila[14].value = nueva_obs_ingreso
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
         print("\n=== PRENDA ACTUALIZADA CORRECTAMENTE ===")
         print(f"CODIGO_PRENDA: {fila[2].value}")
         print(f"ARTICULO: {fila[3].value}")
@@ -2841,7 +2882,7 @@ def eliminar_ingreso():
         return
 
     ws_ingresos.delete_rows(fila_a_eliminar, 1)
-    wb.save(ARCHIVO_EXCEL)
+    guardar_archivo_excel(wb)
 
     print("INGRESO ELIMINADO CORRECTAMENTE.")
 
@@ -2925,7 +2966,7 @@ def reversar_venta():
     fila_ingreso[13].value = ""
     fila_ingreso[15].value = ""
 
-    wb.save(ARCHIVO_EXCEL)
+    guardar_archivo_excel(wb)
 
     print("\n=== VENTA REVERSADA CORRECTAMENTE ===")
 
@@ -2994,7 +3035,7 @@ def eliminar_ingresos_desde_gui(codigos_texto):
         ws_ingresos.delete_rows(fila_numero, 1)
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -3073,7 +3114,7 @@ def reversar_ventas_desde_gui(codigos_texto):
         ws_ventas.delete_rows(fila_numero, 1)
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -3191,7 +3232,7 @@ def proponer_remarque():
 
             fila[14].value = f"REMARQUE PENDIENTE - NUEVO PRECIO: {nuevo_precio}"
 
-            wb.save(ARCHIVO_EXCEL)
+            guardar_archivo_excel(wb)
 
             print("\n=== REMARQUE REGISTRADO ===")
             print(f"CODIGO_PRENDA: {fila[2].value}")
@@ -3239,7 +3280,7 @@ def aprobar_remarque():
             fila[7].value = nuevo_precio
             fila[14].value = f"REMARCADO APROBADO - PRECIO ANTERIOR: {precio_anterior} - PRECIO NUEVO: {nuevo_precio}"
 
-            wb.save(ARCHIVO_EXCEL)
+            guardar_archivo_excel(wb)
 
             print("\n=== REMARQUE APROBADO ===")
             print(f"CODIGO_PRENDA: {fila[2].value}")
@@ -3307,7 +3348,7 @@ def devolver_prendas_multiples():
         print("NO SE REALIZARON DEVOLUCIONES.")
         return
 
-    wb.save(ARCHIVO_EXCEL)
+    guardar_archivo_excel(wb)
     print(f"TOTAL DE PRENDAS DEVUELTAS: {cantidad_devueltas}")
  
  
@@ -3361,7 +3402,7 @@ def crear_proveedora_desde_gui(
     ])
 
     try:
-        wb.save(ARCHIVO_EXCEL)
+        guardar_archivo_excel(wb)
     except PermissionError:
         return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
@@ -3526,7 +3567,7 @@ def nueva_proveedora():
         "ACTIVA"
     ])
 
-    wb.save(ARCHIVO_EXCEL)
+    guardar_archivo_excel(wb)
 
     print("\n=== PROVEEDORA CARGADA CORRECTAMENTE ===")
     print(f"CODIGO_PROVEEDORA: {codigo_proveedora}")
