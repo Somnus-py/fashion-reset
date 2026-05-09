@@ -232,11 +232,15 @@ class AppFashionReset(ctk.CTk):
 
         entry_proveedora = ctk.CTkEntry(frame_lote, width=160)
         entry_proveedora.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        self.entry_ingreso_proveedora = entry_proveedora
+        entry_proveedora.bind("<KeyRelease>", lambda event: self._actualizar_columna_costo_ingreso(entry_proveedora))
+        entry_proveedora.bind("<FocusOut>", lambda event: self._actualizar_columna_costo_ingreso(entry_proveedora))
 
         self.frame_tabla_ingreso = ctk.CTkFrame(self.frame_ingreso, fg_color=COLOR_FONDO)
         self.frame_tabla_ingreso.pack(fill="x", padx=20, pady=10)
 
-        encabezados = ["NÚMERO", "ARTÍCULO", "MARCA", "TALLE", "COLOR", "PRECIO", "OBS"]
+        encabezados = ["NÚMERO", "ARTÍCULO", "MARCA", "TALLE", "COLOR", "PRECIO", "COSTO", "OBS"]
+        self.labels_ingreso = {}
         for col, encabezado in enumerate(encabezados):
             label = ctk.CTkLabel(
                 self.frame_tabla_ingreso,
@@ -245,8 +249,10 @@ class AppFashionReset(ctk.CTk):
                 font=FUENTE_BOTON
             )
             label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+            self.labels_ingreso[encabezado] = label
 
         self.agregar_filas_ingreso(10)
+        self._actualizar_columna_costo_ingreso(entry_proveedora)
 
         frame_botones_inferiores = ctk.CTkFrame(self.frame_ingreso, fg_color=COLOR_FONDO)
         frame_botones_inferiores.pack(fill="x", padx=20, pady=15)
@@ -1415,8 +1421,8 @@ class AppFashionReset(ctk.CTk):
         labels_resumen = [
             ("Cantidad total vendida", "cantidad_total_vendida"),
             ("Total vendido", "total_vendido"),
-            ("Total proveedoras (60%)", "total_proveedoras"),
-            ("Total Fashion Reset (40%)", "total_fashion_reset"),
+            ("Total a pagar / costo", "total_proveedoras"),
+            ("Ganancia Fashion Reset", "total_fashion_reset"),
             ("Total descuentos", "total_descuentos"),
             ("Total neto a pagar", "total_neto_a_pagar"),
         ]
@@ -1529,7 +1535,7 @@ class AppFashionReset(ctk.CTk):
             ("Pagadas", "cantidad_pagadas"),
             ("Pendientes", "cantidad_pendientes"),
             ("Total vendido", "total_vendido"),
-            ("Comision proveedoras", "comision_proveedoras"),
+            ("A pagar / costo", "comision_proveedoras"),
             ("Descuentos a proveedoras", "total_descuentos"),
             ("Total pendiente", "total_pendiente"),
             ("GANANCIA", "ganancia"),
@@ -2027,8 +2033,8 @@ class AppFashionReset(ctk.CTk):
             ("Nombre", "nombre_proveedora", 0, 0, 2),
             ("Cantidad prendas", "cantidad_prendas", 0, 2, 1),
             ("Total vendido", "total_vendido", 0, 3, 1),
-            ("Comisión proveedora", "comision_proveedora", 1, 0, 1),
-            ("Comisión Fashion Reset", "comision_fashion_reset", 1, 1, 1),
+            ("A pagar / costo", "comision_proveedora", 1, 0, 1),
+            ("Ganancia Fashion Reset", "comision_fashion_reset", 1, 1, 1),
             ("Descuentos", "total_descuentos", 1, 2, 1),
             ("Saldo final a pagar", "saldo_final", 1, 3, 1),
         ]
@@ -2218,9 +2224,10 @@ class AppFashionReset(ctk.CTk):
             talle = fila[3].get().strip()
             color = fila[4].get().strip()
             precio_texto = fila[5].get().strip()
-            obs_ingreso = fila[6].get().strip()
+            costo_texto = fila[6].get().strip()
+            obs_ingreso = fila[7].get().strip()
 
-            if not any([numero_prenda, articulo, marca, talle, color, precio_texto, obs_ingreso]):
+            if not any([numero_prenda, articulo, marca, talle, color, precio_texto, costo_texto, obs_ingreso]):
                 ignoradas += 1
                 continue
 
@@ -2237,7 +2244,8 @@ class AppFashionReset(ctk.CTk):
                 talle,
                 color,
                 precio_texto,
-                obs_ingreso
+                obs_ingreso,
+                costo_texto
             )
 
             if resultado:
@@ -3220,7 +3228,9 @@ class AppFashionReset(ctk.CTk):
                 venta["articulo"],
                 venta["color"],
                 venta["precio_venta"],
+                venta.get("costo", ""),
                 venta["comision_proveedora"],
+                venta.get("comision_fashion_reset", ""),
             ]
             for venta in self.rendicion_actual["ventas_rendicion"]
         ]
@@ -3365,7 +3375,7 @@ class AppFashionReset(ctk.CTk):
             ("Proveedora", 1, 12),
             ("Prendas", 0, 8),
             ("Total vendido", 1, 14),
-            ("60% Prov.", 1, 14),
+            ("A pagar", 1, 14),
             ("Descuentos", 1, 14),
             ("Neto a pagar", 1, 14),
         ]
@@ -3863,7 +3873,7 @@ class AppFashionReset(ctk.CTk):
             ("CODIGO", 12),
             ("CANTIDAD", 12),
             ("TOTAL VENDIDO", 14),
-            ("COMISION", 14),
+            ("A PAGAR", 14),
             ("DESCUENTOS", 14),
             ("SALDO FINAL", 14),
         ]
@@ -4149,17 +4159,21 @@ class AppFashionReset(ctk.CTk):
         for widget in self.frame_tabla_rendicion.winfo_children():
             widget.destroy()
 
+        usa_costo = any(str(venta.get("tipo_rendicion") or "").upper() == "COSTO" for venta in ventas)
         columnas = [
             ("Fecha", 0, 10),
             ("Codigo", 0, 8),
             ("Articulo", 4, 80),
             ("Color", 3, 60),
             ("Precio", 0, 12),
-            ("60% Prov.", 1, 12),
+            ("A pagar", 1, 12),
+            ("Ganancia", 1, 12),
             ("Cliente", 1, 16),
             ("Tipo pago", 1, 14),
             ("Validacion", 1, 12),
         ]
+        if usa_costo:
+            columnas.insert(5, ("Costo", 1, 12))
 
         for indice, (_, peso, _) in enumerate(columnas):
             self.frame_tabla_rendicion.grid_columnconfigure(indice, weight=peso, uniform="tabla_rendicion")
@@ -4193,10 +4207,14 @@ class AppFashionReset(ctk.CTk):
                 str(venta["color"] or ""),
                 self._format_moneda(venta["precio_venta"]),
                 self._format_moneda(venta["comision_proveedora"]),
+                self._format_moneda(venta.get("comision_fashion_reset", 0)),
                 str(venta["cliente"] or ""),
                 str(venta["tipo_pago"] or ""),
                 str(venta["validacion"] or ""),
             ]
+            if usa_costo:
+                costo = venta.get("costo", "")
+                valores.insert(5, self._format_moneda(costo) if costo != "" else "-")
 
             for columna, valor in enumerate(valores):
                 texto = str(valor)
@@ -4237,17 +4255,21 @@ class AppFashionReset(ctk.CTk):
         if not ventas:
             return "Todavía no hay resultados para mostrar."
 
+        usa_costo = any(str(venta.get("tipo_rendicion") or "").upper() == "COSTO" for venta in ventas)
         columnas = [
             ("FECHA", 12),
             ("CODIGO", 12),
             ("ARTICULO", 18),
             ("COLOR", 12),
             ("PRECIO", 12),
-            ("60% PROV.", 12),
+            ("A PAGAR", 12),
+            ("GANANCIA", 12),
             ("CLIENTE", 18),
             ("TIPO PAGO", 22),
             ("VALIDACION", 12),
         ]
+        if usa_costo:
+            columnas.insert(5, ("COSTO", 12))
 
         encabezado = " | ".join(titulo.ljust(ancho) for titulo, ancho in columnas)
         separador = "-+-".join("-" * ancho for _, ancho in columnas)
@@ -4261,10 +4283,14 @@ class AppFashionReset(ctk.CTk):
                 str(venta["color"] or ""),
                 self._format_moneda(venta["precio_venta"]),
                 self._format_moneda(venta["comision_proveedora"]),
+                self._format_moneda(venta.get("comision_fashion_reset", 0)),
                 str(venta["cliente"] or ""),
                 str(venta["tipo_pago"] or ""),
                 str(venta["validacion"] or ""),
             ]
+            if usa_costo:
+                costo = venta.get("costo", "")
+                valores.insert(5, self._format_moneda(costo) if costo != "" else "-")
 
             celdas = []
             for indice, valor in enumerate(valores):
@@ -4314,7 +4340,7 @@ class AppFashionReset(ctk.CTk):
 
     def _widget_acepta_foco(self, widget):
         try:
-            return widget.cget("state") != "disabled"
+            return widget.cget("state") != "disabled" and widget.winfo_ismapped()
         except Exception:
             return True
 
@@ -4499,6 +4525,39 @@ class AppFashionReset(ctk.CTk):
         self._ocultar_frames_secundarios()
         self.frame_botones.pack(pady=30, padx=30, fill="both", expand=True)
 
+    def _usa_costo_ingreso(self, codigo_proveedora):
+        return codigo_proveedora.strip().upper() in {"AYI", "PACI"}
+
+    def _actualizar_columna_costo_ingreso(self, entry_proveedora):
+        if not hasattr(self, "labels_ingreso") or not hasattr(self, "filas_ingreso"):
+            return
+
+        mostrar_costo = self._usa_costo_ingreso(entry_proveedora.get())
+        label_costo = self.labels_ingreso.get("COSTO")
+        label_obs = self.labels_ingreso.get("OBS")
+
+        if mostrar_costo:
+            if label_costo:
+                label_costo.grid(row=0, column=6, padx=5, pady=5, sticky="w")
+            if label_obs:
+                label_obs.grid(row=0, column=7, padx=5, pady=5, sticky="w")
+        else:
+            if label_costo:
+                label_costo.grid_remove()
+            if label_obs:
+                label_obs.grid(row=0, column=6, padx=5, pady=5, sticky="w")
+
+        for fila_indice, fila in enumerate(self.filas_ingreso, start=1):
+            entry_costo = fila[6]
+            entry_obs = fila[7]
+            if mostrar_costo:
+                entry_costo.grid(row=fila_indice, column=6, padx=5, pady=4)
+                entry_obs.grid(row=fila_indice, column=7, padx=5, pady=4)
+            else:
+                entry_costo.delete(0, "end")
+                entry_costo.grid_remove()
+                entry_obs.grid(row=fila_indice, column=6, padx=5, pady=4)
+
     def agregar_filas_ingreso(self, cantidad=10):
         for _ in range(cantidad):
             entry_numero = ctk.CTkEntry(self.frame_tabla_ingreso, width=80)
@@ -4519,8 +4578,11 @@ class AppFashionReset(ctk.CTk):
             entry_precio = ctk.CTkEntry(self.frame_tabla_ingreso, width=100)
             entry_precio.grid(row=self.fila_actual_ingreso, column=5, padx=5, pady=4)
 
+            entry_costo = ctk.CTkEntry(self.frame_tabla_ingreso, width=100)
+            entry_costo.grid(row=self.fila_actual_ingreso, column=6, padx=5, pady=4)
+
             entry_obs = ctk.CTkEntry(self.frame_tabla_ingreso, width=160)
-            entry_obs.grid(row=self.fila_actual_ingreso, column=6, padx=5, pady=4)
+            entry_obs.grid(row=self.fila_actual_ingreso, column=7, padx=5, pady=4)
 
             fila_indice = len(self.filas_ingreso)
             fila_entradas = [
@@ -4530,6 +4592,7 @@ class AppFashionReset(ctk.CTk):
                 entry_talle,
                 entry_color,
                 entry_precio,
+                entry_costo,
                 entry_obs
             ]
 
@@ -4545,6 +4608,9 @@ class AppFashionReset(ctk.CTk):
 
             self.filas_ingreso.append(fila_entradas)
             self.fila_actual_ingreso += 1
+
+        if hasattr(self, "labels_ingreso"):
+            self._actualizar_columna_costo_ingreso(self.entry_ingreso_proveedora)
 
     def agregar_filas_venta(self, cantidad=10):
         for _ in range(cantidad):

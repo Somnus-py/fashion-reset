@@ -22,6 +22,7 @@ CARPETA_BACKUPS = os.path.join(CARPETA_BASE, "backups")
 MAX_BACKUPS = 50
 DIAS_PRENDA_VENCIDA = 60
 MESES_PRENDA_VENCIDA = 2
+PROVEEDORAS_CON_COSTO = {"AYI", "PACI"}
 
 
 def obtener_ruta_en_base(*partes):
@@ -68,6 +69,39 @@ def guardar_archivo_excel(wb):
 # FUNCION AUXILIAR PARA LIMPIAR TEXTOS
 def limpiar_texto(texto):
     return " ".join(texto.strip().upper().split())
+
+
+def _parse_monto_entero(texto):
+    texto = str(texto or "").strip()
+    if not texto:
+        return ""
+
+    texto = texto.replace(".", "").replace(",", "")
+    if not texto.isdigit():
+        raise ValueError
+
+    return int(texto)
+
+
+def _obtener_encabezados(ws):
+    encabezados = {}
+    for columna in range(1, ws.max_column + 1):
+        nombre = str(ws.cell(row=1, column=columna).value or "").strip().upper()
+        if nombre:
+            encabezados[nombre] = columna
+    return encabezados
+
+
+def _asegurar_columnas(ws, encabezados_requeridos):
+    encabezados_actuales = _obtener_encabezados(ws)
+
+    for encabezado in encabezados_requeridos:
+        if encabezado not in encabezados_actuales:
+            nueva_columna = ws.max_column + 1
+            ws.cell(row=1, column=nueva_columna).value = encabezado
+            encabezados_actuales[encabezado] = nueva_columna
+
+    return encabezados_actuales
 
 # FUNCION AUXILIAR PARA LEER FECHAS
 def convertir_fecha(texto_fecha):
@@ -132,21 +166,69 @@ def normalizar_obs_descuento_proveedora(tipo_pago, obs_venta):
 
 
 def _asegurar_columnas_remarque(ws_ingresos):
-    encabezados_requeridos = ["PRECIO_REMARCADO", "FECHA_REMARQUE", "DECISION_PROVEEDORA"]
-    encabezados_actuales = {}
+    return _asegurar_columnas(ws_ingresos, ["PRECIO_REMARCADO", "FECHA_REMARQUE", "DECISION_PROVEEDORA"])
 
-    for columna in range(1, ws_ingresos.max_column + 1):
-        nombre = str(ws_ingresos.cell(row=1, column=columna).value or "").strip().upper()
-        if nombre:
-            encabezados_actuales[nombre] = columna
 
-    for encabezado in encabezados_requeridos:
-        if encabezado not in encabezados_actuales:
-            nueva_columna = ws_ingresos.max_column + 1
-            ws_ingresos.cell(row=1, column=nueva_columna).value = encabezado
-            encabezados_actuales[encabezado] = nueva_columna
+def _asegurar_columnas_costo(ws_ingresos):
+    return _asegurar_columnas(ws_ingresos, ["COSTO", "TIPO_RENDICION"])
 
-    return encabezados_actuales
+
+def _obtener_datos_rendicion_ingresos(wb):
+    if "INGRESOS" not in wb.sheetnames:
+        return {}
+
+    ws_ingresos = wb["INGRESOS"]
+    encabezados = _obtener_encabezados(ws_ingresos)
+    col_codigo = encabezados.get("CODIGO_PRENDA", 3)
+    col_proveedora = encabezados.get("CODIGO_PROVEEDORA", 2)
+    col_costo = encabezados.get("COSTO")
+    col_tipo = encabezados.get("TIPO_RENDICION")
+    datos = {}
+
+    for fila in ws_ingresos.iter_rows(min_row=2):
+        codigo_prenda = str(fila[col_codigo - 1].value or "").strip().upper()
+        if not codigo_prenda:
+            continue
+
+        codigo_proveedora = str(fila[col_proveedora - 1].value or "").strip().upper()
+        tipo_rendicion = ""
+        if col_tipo:
+            tipo_rendicion = str(fila[col_tipo - 1].value or "").strip().upper()
+        if not tipo_rendicion:
+            tipo_rendicion = "COSTO" if codigo_proveedora in PROVEEDORAS_CON_COSTO else "PORCENTAJE_60"
+
+        costo = 0
+        if col_costo and isinstance(fila[col_costo - 1].value, (int, float)):
+            costo = int(fila[col_costo - 1].value)
+
+        datos[codigo_prenda] = {
+            "tipo_rendicion": tipo_rendicion,
+            "costo": costo
+        }
+
+    return datos
+
+
+def _calcular_montos_rendicion(precio_venta, datos_prenda):
+    precio_venta = int(precio_venta)
+    tipo_rendicion = str(datos_prenda.get("tipo_rendicion") or "PORCENTAJE_60").strip().upper()
+
+    if tipo_rendicion == "COSTO":
+        costo = int(datos_prenda.get("costo") or 0)
+        ganancia = precio_venta - costo
+        return {
+            "tipo_rendicion": "COSTO",
+            "costo": costo,
+            "comision_proveedora": costo,
+            "comision_fashion_reset": ganancia,
+        }
+
+    return {
+        "tipo_rendicion": "PORCENTAJE_60",
+        "costo": "",
+        "comision_proveedora": int(precio_venta * 0.60),
+        "comision_fashion_reset": int(precio_venta * 0.40),
+    }
 
 
 # CARGA DE INGRESO
@@ -161,6 +243,7 @@ def _guardar_ingreso_en_excel(
     color,
     precio_texto,
     obs_ingreso,
+    costo_texto="",
     precio_obligatorio=False
 ):
     fecha_ingreso = str(fecha_ingreso).strip()
@@ -172,6 +255,7 @@ def _guardar_ingreso_en_excel(
     color = limpiar_texto(str(color))
     obs_ingreso = limpiar_texto(str(obs_ingreso))
     precio_texto = str(precio_texto).strip()
+    costo_texto = str(costo_texto).strip()
 
     if not codigo_proveedora:
         return False, "ERROR: CODIGO_PROVEEDORA es obligatorio."
@@ -186,14 +270,22 @@ def _guardar_ingreso_en_excel(
     except ValueError:
         return False, "ERROR: FECHA_INGRESO invalida. Usa el formato DD/MM/YY o DD/MM/YYYY."
 
-    precio = ""
-    if precio_texto:
-        try:
-            precio = int(precio_texto)
-        except ValueError:
-            return False, "ERROR: PRECIO invalido. Debe ser un numero entero."
-    elif precio_obligatorio:
+    try:
+        precio = _parse_monto_entero(precio_texto)
+    except ValueError:
         return False, "ERROR: PRECIO invalido. Debe ser un numero entero."
+
+    if precio == "" and precio_obligatorio:
+        return False, "ERROR: PRECIO invalido. Debe ser un numero entero."
+
+    tipo_rendicion = "COSTO" if codigo_proveedora in PROVEEDORAS_CON_COSTO else "PORCENTAJE_60"
+    try:
+        costo = _parse_monto_entero(costo_texto)
+    except ValueError:
+        return False, "ERROR: COSTO invalido. Debe ser un numero entero."
+
+    if tipo_rendicion == "COSTO" and costo == "":
+        costo = 0
 
     try:
         wb = load_workbook(ARCHIVO_EXCEL)
@@ -214,6 +306,8 @@ def _guardar_ingreso_en_excel(
     if codigo_prenda in codigos_existentes:
         return False, f"ERROR: El codigo completo {codigo_prenda} ya existe en INGRESOS."
 
+    encabezados = _asegurar_columnas_costo(ws)
+
     ws.append([
         fecha_ingreso,
         codigo_proveedora,
@@ -232,6 +326,9 @@ def _guardar_ingreso_en_excel(
         obs_ingreso,
         ""
     ])
+    fila_nueva = ws.max_row
+    ws.cell(row=fila_nueva, column=encabezados["COSTO"], value=costo)
+    ws.cell(row=fila_nueva, column=encabezados["TIPO_RENDICION"], value=tipo_rendicion)
 
     try:
         guardar_archivo_excel(wb)
@@ -241,7 +338,7 @@ def _guardar_ingreso_en_excel(
     return True, codigo_prenda
 
 
-def guardar_ingreso_desde_gui(fecha_ingreso, codigo_proveedora, numero_prenda, articulo, marca, talle, color, precio_texto, obs_ingreso):
+def guardar_ingreso_desde_gui(fecha_ingreso, codigo_proveedora, numero_prenda, articulo, marca, talle, color, precio_texto, obs_ingreso, costo_texto=""):
     return _guardar_ingreso_en_excel(
         fecha_ingreso,
         codigo_proveedora,
@@ -252,6 +349,7 @@ def guardar_ingreso_desde_gui(fecha_ingreso, codigo_proveedora, numero_prenda, a
         color,
         precio_texto,
         obs_ingreso,
+        costo_texto,
         precio_obligatorio=False
     )
 
@@ -674,11 +772,18 @@ def calcular_resumen_general(mes_texto, anio_texto):
     total_prendas = 0
     total_vendido = 0
     total_descuentos = 0
+    total_proveedoras = 0
+    total_fashion_reset = 0
+    datos_ingresos = _obtener_datos_rendicion_ingresos(wb)
+    total_proveedoras = 0
+    total_fashion_reset = 0
     resumen_proveedoras = {}
+    datos_ingresos = _obtener_datos_rendicion_ingresos(wb)
 
     for fila in ws_ventas.iter_rows(min_row=2, values_only=True):
         fecha_venta = fila[0]
         codigo_proveedora = str(fila[1] or "").strip().upper()
+        codigo_prenda = str(fila[2] or "").strip().upper()
         precio_venta = fila[8]
         tipo_pago = fila[10]
         validacion = fila[11]
@@ -693,8 +798,14 @@ def calcular_resumen_general(mes_texto, anio_texto):
                 continue
 
             precio_venta = int(precio_venta)
+            montos = _calcular_montos_rendicion(
+                precio_venta,
+                datos_ingresos.get(codigo_prenda, {"tipo_rendicion": "PORCENTAJE_60"})
+            )
             total_prendas += 1
             total_vendido += precio_venta
+            total_proveedoras += montos["comision_proveedora"]
+            total_fashion_reset += montos["comision_fashion_reset"]
 
             if str(tipo_pago).strip().upper() == "DESCUENTO A PROVEEDORA":
                 total_descuentos += precio_venta
@@ -704,11 +815,15 @@ def calcular_resumen_general(mes_texto, anio_texto):
                     "codigo_proveedora": codigo_proveedora,
                     "cantidad_prendas": 0,
                     "total_vendido": 0,
-                    "total_descuentos": 0
+                    "total_descuentos": 0,
+                    "total_proveedora": 0,
+                    "total_fashion_reset": 0,
                 }
 
             resumen_proveedoras[codigo_proveedora]["cantidad_prendas"] += 1
             resumen_proveedoras[codigo_proveedora]["total_vendido"] += precio_venta
+            resumen_proveedoras[codigo_proveedora]["total_proveedora"] += montos["comision_proveedora"]
+            resumen_proveedoras[codigo_proveedora]["total_fashion_reset"] += montos["comision_fashion_reset"]
 
             if str(tipo_pago).strip().upper() == "DESCUENTO A PROVEEDORA":
                 resumen_proveedoras[codigo_proveedora]["total_descuentos"] += precio_venta
@@ -716,20 +831,19 @@ def calcular_resumen_general(mes_texto, anio_texto):
     if total_prendas == 0:
         return False, "NO SE ENCONTRARON VENTAS PAGADAS EN ESE PERIODO."
 
-    total_proveedoras = int(total_vendido * 0.60)
-    total_fashion_reset = int(total_vendido * 0.40)
     total_neto_a_pagar = int(total_proveedoras - total_descuentos)
 
     detalle_proveedoras = []
     for codigo_proveedora in sorted(resumen_proveedoras.keys()):
         datos = resumen_proveedoras[codigo_proveedora]
-        comision_proveedora = int(datos["total_vendido"] * 0.60)
+        comision_proveedora = int(datos["total_proveedora"])
         saldo_final = int(comision_proveedora - datos["total_descuentos"])
         detalle_proveedoras.append({
             "codigo_proveedora": codigo_proveedora,
             "cantidad_prendas": datos["cantidad_prendas"],
             "total_vendido": datos["total_vendido"],
             "comision_proveedora": comision_proveedora,
+            "comision_fashion_reset": int(datos["total_fashion_reset"]),
             "descuentos": datos["total_descuentos"],
             "saldo_final": saldo_final
         })
@@ -774,7 +888,10 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
     total_pagado = 0
     total_pendiente = 0
     total_descuentos = 0
+    comision_proveedoras = 0
+    ganancia = 0
     ventas = []
+    datos_ingresos = _obtener_datos_rendicion_ingresos(wb)
 
     for fila in ws_ventas.iter_rows(min_row=2, values_only=True):
         fecha_venta = fila[0]
@@ -807,8 +924,14 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         total_vendido += precio_venta
 
         if validacion == "PAGADO":
+            montos = _calcular_montos_rendicion(
+                precio_venta,
+                datos_ingresos.get(str(codigo_prenda or "").strip().upper(), {"tipo_rendicion": "PORCENTAJE_60"})
+            )
             cantidad_pagadas += 1
             total_pagado += precio_venta
+            comision_proveedoras += montos["comision_proveedora"]
+            ganancia += montos["comision_fashion_reset"]
         elif validacion == "PENDIENTE":
             cantidad_pendientes += 1
             total_pendiente += precio_venta
@@ -835,8 +958,6 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         return False, "NO SE ENCONTRARON VENTAS EN ESE RANGO DE FECHAS."
 
     ventas.sort(key=lambda venta: (venta["fecha_venta"], venta["codigo_prenda"]))
-    comision_proveedoras = int(total_pagado * 0.60)
-    ganancia = int(total_pagado * 0.40)
 
     return True, {
         "fecha_desde": fecha_desde,
@@ -910,6 +1031,7 @@ AÑO: {anio}
     for fila in ws_ventas.iter_rows(min_row=2, values_only=True):
         fecha_venta = fila[0]
         codigo_proveedora = str(fila[1]).strip().upper()
+        codigo_prenda = str(fila[2] or "").strip().upper()
         precio_venta = fila[8]
         tipo_pago = fila[10]
         validacion = fila[11]
@@ -922,8 +1044,18 @@ AÑO: {anio}
 
         # FILTRAR MES, AÑO Y SOLO PAGADO
         if fecha_obj.month == mes and fecha_obj.year == anio and str(validacion).strip().upper() == "PAGADO":
+            if not isinstance(precio_venta, (int, float)):
+                continue
+
+            precio_venta = int(precio_venta)
+            montos = _calcular_montos_rendicion(
+                precio_venta,
+                datos_ingresos.get(codigo_prenda, {"tipo_rendicion": "PORCENTAJE_60"})
+            )
             total_prendas += 1
             total_vendido += precio_venta
+            total_proveedoras += montos["comision_proveedora"]
+            total_fashion_reset += montos["comision_fashion_reset"]
 
             if str(tipo_pago).strip().upper() == "DESCUENTO A PROVEEDORA":
                 total_descuentos += precio_venta
@@ -933,12 +1065,16 @@ AÑO: {anio}
                 resumen_proveedoras[codigo_proveedora] = {
                     "cantidad_prendas": 0,
                     "total_vendido": 0,
-                    "total_descuentos": 0
+                    "total_descuentos": 0,
+                    "total_proveedora": 0,
+                    "total_fashion_reset": 0,
                 }
 
             # ACUMULAR POR PROVEEDORA
             resumen_proveedoras[codigo_proveedora]["cantidad_prendas"] += 1
             resumen_proveedoras[codigo_proveedora]["total_vendido"] += precio_venta
+            resumen_proveedoras[codigo_proveedora]["total_proveedora"] += montos["comision_proveedora"]
+            resumen_proveedoras[codigo_proveedora]["total_fashion_reset"] += montos["comision_fashion_reset"]
 
             if str(tipo_pago).strip().upper() == "DESCUENTO A PROVEEDORA":
                 resumen_proveedoras[codigo_proveedora]["total_descuentos"] += precio_venta
@@ -948,9 +1084,6 @@ AÑO: {anio}
         print("NO SE ENCONTRARON VENTAS PAGADAS EN ESE PERIODO.")
         return
 
-    # CALCULOS GENERALES
-    total_proveedoras = int(total_vendido * 0.60)
-    total_fashion_reset = int(total_vendido * 0.40)
     total_neto_a_pagar = int(total_proveedoras - total_descuentos)
 
     # MOSTRAR RESUMEN GENERAL
@@ -958,8 +1091,8 @@ AÑO: {anio}
 === RESUMEN GENERAL DEL MES ===
 CANTIDAD_TOTAL_VENDIDA: {total_prendas}
 TOTAL_VENDIDO: {total_vendido}
-TOTAL_PROVEEDORAS (60%): {total_proveedoras}
-TOTAL_FASHION_RESET (40%): {total_fashion_reset}
+TOTAL_A_PAGAR_COSTO: {total_proveedoras}
+GANANCIA_FASHION_RESET: {total_fashion_reset}
 TOTAL_DESCUENTOS_A_PROVEEDORAS: {total_descuentos}
 TOTAL_NETO_A_PAGAR: {total_neto_a_pagar}
 """)
@@ -968,14 +1101,14 @@ TOTAL_NETO_A_PAGAR: {total_neto_a_pagar}
     print("=== DESGLOSE POR PROVEEDORA ===")
 
     for codigo_proveedora, datos in resumen_proveedoras.items():
-        comision_proveedora = int(datos["total_vendido"] * 0.60)
+        comision_proveedora = int(datos["total_proveedora"])
         saldo_final = int(comision_proveedora - datos["total_descuentos"])
 
         print(f"""
 CODIGO_PROVEEDORA: {codigo_proveedora}
 CANTIDAD_PRENDAS: {datos["cantidad_prendas"]}
 TOTAL_VENDIDO: {datos["total_vendido"]}
-COMISION_PROVEEDORA (60%): {comision_proveedora}
+A_PAGAR_COSTO: {comision_proveedora}
 DESCUENTOS: {datos["total_descuentos"]}
 SALDO_FINAL_A_PAGAR: {saldo_final}
 """)
@@ -1999,8 +2132,11 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
 
     total_vendido = 0
     total_descuentos = 0
+    comision_proveedora = 0
+    comision_fashion_reset = 0
     cantidad_prendas = 0
     ventas_rendicion = []
+    datos_ingresos = _obtener_datos_rendicion_ingresos(wb)
 
     for fila in ws_ventas.iter_rows(min_row=2, values_only=True):
         fecha_venta = fila[0]
@@ -2027,16 +2163,26 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
             if not isinstance(precio_venta, (int, float)):
                 continue
 
+            precio_venta = int(precio_venta)
+            montos = _calcular_montos_rendicion(
+                precio_venta,
+                datos_ingresos.get(str(codigo_prenda or "").strip().upper(), {"tipo_rendicion": "PORCENTAJE_60"})
+            )
             cantidad_prendas += 1
-            total_vendido += int(precio_venta)
+            total_vendido += precio_venta
+            comision_proveedora += montos["comision_proveedora"]
+            comision_fashion_reset += montos["comision_fashion_reset"]
             ventas_rendicion.append({
                 "fecha_venta": fecha_venta,
                 "codigo_proveedora": codigo_proveedora_fila,
                 "codigo_prenda": codigo_prenda,
                 "articulo": articulo,
                 "color": color,
-                "precio_venta": int(precio_venta),
-                "comision_proveedora": int(precio_venta * 0.60),
+                "precio_venta": precio_venta,
+                "costo": montos["costo"],
+                "tipo_rendicion": montos["tipo_rendicion"],
+                "comision_proveedora": montos["comision_proveedora"],
+                "comision_fashion_reset": montos["comision_fashion_reset"],
                 "cliente": cliente,
                 "tipo_pago": tipo_pago,
                 "validacion": validacion
@@ -2063,8 +2209,6 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
     if cantidad_prendas == 0:
         return False, "NO SE ENCONTRARON VENTAS PAGADAS PARA ESTA PROVEEDORA EN ESE PERIODO."
 
-    comision_proveedora = int(total_vendido * 0.60)
-    comision_fashion_reset = int(total_vendido * 0.40)
     saldo_final = int(comision_proveedora - total_descuentos)
 
     return True, {
@@ -2128,8 +2272,11 @@ CODIGO_PROVEEDORA: {codigo_proveedora}
     # VARIABLES DE RENDICION
     total_vendido = 0
     total_descuentos = 0
+    comision_proveedora = 0
+    comision_fashion_reset = 0
     cantidad_prendas = 0
     ventas_rendicion = []
+    datos_ingresos = _obtener_datos_rendicion_ingresos(wb)
 
     print("\n=== DETALLE DE VENTAS ===")
 
@@ -2139,6 +2286,7 @@ CODIGO_PROVEEDORA: {codigo_proveedora}
         codigo_proveedora_fila = str(fila[1]).strip().upper()
         codigo_prenda = fila[2]
         articulo = fila[3]
+        color = fila[6]
         precio_venta = fila[8]
         cliente = fila[9]
         tipo_pago = fila[10]
@@ -2158,18 +2306,27 @@ CODIGO_PROVEEDORA: {codigo_proveedora}
             and codigo_proveedora_fila == codigo_proveedora
             and str(validacion).strip().upper() == "PAGADO"
         ):
+            if not isinstance(precio_venta, (int, float)):
+                continue
+
+            precio_venta = int(precio_venta)
+            montos = _calcular_montos_rendicion(
+                precio_venta,
+                datos_ingresos.get(str(codigo_prenda or "").strip().upper(), {"tipo_rendicion": "PORCENTAJE_60"})
+            )
             cantidad_prendas += 1
             total_vendido += precio_venta
+            comision_proveedora += montos["comision_proveedora"]
+            comision_fashion_reset += montos["comision_fashion_reset"]
             
             ventas_rendicion.append([
-                fecha_venta,
-                codigo_proveedora_fila,
                 codigo_prenda,
                 articulo,
+                color,
                 precio_venta,
-                cliente,
-                tipo_pago,
-                validacion
+                montos["costo"],
+                montos["comision_proveedora"],
+                montos["comision_fashion_reset"],
             ])
 
 
@@ -2207,9 +2364,6 @@ VALIDACION: {validacion}
         print("NO SE ENCONTRARON VENTAS PAGADAS PARA ESTA PROVEEDORA EN ESE PERIODO.")
         return
 
-    # CALCULAR COMISIONES
-    comision_proveedora = int(total_vendido * 0.60)
-    comision_fashion_reset = int(total_vendido * 0.40)
     saldo_final = int(comision_proveedora - total_descuentos)
 
     # MOSTRAR RESUMEN FINAL
@@ -2217,8 +2371,8 @@ VALIDACION: {validacion}
 === RESUMEN DE RENDICION ===
 CANTIDAD_PRENDAS: {cantidad_prendas}
 TOTAL_VENDIDO: {total_vendido}
-COMISION_PROVEEDORA (60%): {comision_proveedora}
-COMISION_FASHION_RESET (40%): {comision_fashion_reset}
+A_PAGAR_COSTO: {comision_proveedora}
+GANANCIA_FASHION_RESET: {comision_fashion_reset}
 TOTAL_DESCUENTOS_A_PROVEEDORA: {total_descuentos}
 SALDO_FINAL_A_PAGAR: {saldo_final}
 """)
@@ -2301,7 +2455,9 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             "ARTICULO",
             "COLOR",
             "PRECIO VENTA",
-            "60% PROVEEDORA",
+            "COSTO",
+            "A PAGAR / COSTO",
+            "GANANCIA FASHION RESET",
         ])
 
         for venta in ventas_rendicion:
@@ -2309,7 +2465,8 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
 
         ws_export.append([])
         ws_export.append(["CANTIDAD PRENDAS", cantidad_prendas])
-        ws_export.append(["MONTO A PROVEEDORA (60%)", comision_proveedora])
+        ws_export.append(["MONTO A PAGAR / COSTO", comision_proveedora])
+        ws_export.append(["GANANCIA FASHION RESET", comision_fashion_reset])
         ws_export.append(["TOTAL DESCUENTOS A PROVEEDORA", total_descuentos])
         ws_export.append(["SALDO FINAL A PAGAR", saldo_final])
 
@@ -2328,15 +2485,16 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
 
         formato_miles = "#,##0"
 
-        for fila in ws_export.iter_rows(min_row=8, max_col=5):
-            for celda in fila[3:5]:
+        for fila in ws_export.iter_rows(min_row=8, max_col=7):
+            for celda in fila[3:7]:
                 if isinstance(celda.value, (int, float)):
                     celda.number_format = formato_miles
 
         for fila in ws_export.iter_rows(min_row=1, max_col=2):
             etiqueta = str(fila[0].value or "").strip().upper()
             if etiqueta in {
-                "MONTO A PROVEEDORA (60%)",
+                "MONTO A PAGAR / COSTO",
+                "GANANCIA FASHION RESET",
                 "TOTAL DESCUENTOS A PROVEEDORA",
                 "SALDO FINAL A PAGAR",
             } and isinstance(fila[1].value, (int, float)):
@@ -2352,16 +2510,18 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             "ARTICULO",
             "COLOR",
             "PRECIO VENTA",
-            "60% PROVEEDORA",
+            "COSTO",
+            "A PAGAR / COSTO",
+            "GANANCIA FASHION RESET",
             "CANTIDAD PRENDAS",
-            "MONTO A PROVEEDORA (60%)",
+            "MONTO A PAGAR / COSTO",
             "TOTAL DESCUENTOS A PROVEEDORA",
             "SALDO FINAL A PAGAR",
             "DETALLE DE DESCUENTOS A PROVEEDORA",
             "PRECIO DESCONTADO",
         }
 
-        for fila in ws_export.iter_rows(min_row=1, max_col=5):
+        for fila in ws_export.iter_rows(min_row=1, max_col=7):
             for celda in fila:
                 etiqueta = str(celda.value or "").strip().upper()
                 if etiqueta in etiquetas_negrita:
@@ -2374,18 +2534,20 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             "CODIGO PRENDA",
             "ARTICULO",
             "COLOR",
-            "60% PROVEEDORA",
+            "COSTO",
+            "A PAGAR / COSTO",
+            "GANANCIA FASHION RESET",
             "DETALLE DE DESCUENTOS A PROVEEDORA",
             "PRECIO DESCONTADO",
         }
 
-        for fila in ws_export.iter_rows(min_row=1, max_col=5):
+        for fila in ws_export.iter_rows(min_row=1, max_col=7):
             for celda in fila:
                 etiqueta = str(celda.value or "").strip().upper()
                 if etiqueta in etiquetas_celestes:
                     celda.fill = relleno_celeste
 
-        for fila in ws_export.iter_rows(min_row=1, max_col=5):
+        for fila in ws_export.iter_rows(min_row=1, max_col=7):
             etiqueta = str(fila[0].value or "").strip().upper()
             if etiqueta == "CODIGO PRENDA":
                 continue
