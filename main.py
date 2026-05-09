@@ -20,6 +20,8 @@ CARPETA_BASE = _obtener_carpeta_base()
 ARCHIVO_EXCEL = os.path.join(CARPETA_BASE, "fashion_reset.xlsx")
 CARPETA_BACKUPS = os.path.join(CARPETA_BASE, "backups")
 MAX_BACKUPS = 50
+DIAS_PRENDA_VENCIDA = 60
+MESES_PRENDA_VENCIDA = 2
 
 
 def obtener_ruta_en_base(*partes):
@@ -833,6 +835,7 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         return False, "NO SE ENCONTRARON VENTAS EN ESE RANGO DE FECHAS."
 
     ventas.sort(key=lambda venta: (venta["fecha_venta"], venta["codigo_prenda"]))
+    comision_proveedoras = int(total_pagado * 0.60)
     ganancia = int(total_pagado * 0.40)
 
     return True, {
@@ -843,6 +846,7 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         "cantidad_pendientes": cantidad_pendientes,
         "total_vendido": total_vendido,
         "total_pagado": total_pagado,
+        "comision_proveedoras": comision_proveedoras,
         "total_pendiente": total_pendiente,
         "total_descuentos": total_descuentos,
         "ganancia": ganancia,
@@ -1054,7 +1058,7 @@ def calcular_prendas_vencidas():
             continue
 
         dias_en_inventario = (hoy - fecha_convertida.date()).days
-        if dias_en_inventario < 90:
+        if dias_en_inventario < DIAS_PRENDA_VENCIDA:
             continue
 
         prendas_vencidas.append({
@@ -1123,8 +1127,8 @@ def obtener_prenda_para_remarque(codigo_prenda):
         return False, "ERROR: LA FECHA_INGRESO DE LA PRENDA ES INVALIDA."
 
     dias_en_inventario = (datetime.now().date() - fecha_ingreso.date()).days
-    if dias_en_inventario < 90:
-        return False, "ERROR: LA PRENDA TODAVIA NO CUMPLE 3 MESES EN INVENTARIO."
+    if dias_en_inventario < DIAS_PRENDA_VENCIDA:
+        return False, f"ERROR: LA PRENDA TODAVIA NO CUMPLE {MESES_PRENDA_VENCIDA} MESES EN INVENTARIO."
 
     col_precio_remarcado = encabezados["PRECIO_REMARCADO"] - 1
     col_fecha_remarque = encabezados["FECHA_REMARQUE"] - 1
@@ -1247,7 +1251,7 @@ def obtener_lote_remarque_proveedora_desde_gui(codigo_proveedora):
             continue
 
         dias_en_inventario = (hoy - fecha_ingreso.date()).days
-        if dias_en_inventario < 90:
+        if dias_en_inventario < DIAS_PRENDA_VENCIDA:
             continue
 
         prendas_remarque.append({
@@ -1374,8 +1378,8 @@ def guardar_lote_remarque_desde_gui(codigo_proveedora, prendas_remarque, fecha_r
             return False, f"ERROR: LA FECHA_INGRESO DE {codigo_prenda} ES INVALIDA."
 
         dias_en_inventario = (hoy - fecha_ingreso.date()).days
-        if dias_en_inventario < 90:
-            return False, f"ERROR: LA PRENDA {codigo_prenda} TODAVIA NO CUMPLE 3 MESES EN INVENTARIO."
+        if dias_en_inventario < DIAS_PRENDA_VENCIDA:
+            return False, f"ERROR: LA PRENDA {codigo_prenda} TODAVIA NO CUMPLE {MESES_PRENDA_VENCIDA} MESES EN INVENTARIO."
 
         fila[encabezados["PRECIO_REMARCADO"] - 1].value = item["precio_remarcado"]
         fila[encabezados["FECHA_REMARQUE"] - 1].value = fecha_remarque
@@ -3129,8 +3133,8 @@ def reversar_ventas_desde_gui(codigos_texto):
 
 
 
-                                # PRENDAS CON 3 MESES O MAS
-def detectar_prendas_3_meses():
+                                # PRENDAS VENCIDAS
+def detectar_prendas_vencidas():
     try:
         wb = load_workbook(ARCHIVO_EXCEL)
         ws_ingresos = wb["INGRESOS"]
@@ -3139,7 +3143,7 @@ def detectar_prendas_3_meses():
         return
   
 
-    print("\n=== PRENDAS CON 3 MESES O MAS ===")
+    print(f"\n=== PRENDAS CON {MESES_PRENDA_VENCIDA} MESES O MAS ===")
 
     codigo_proveedora_filtro = limpiar_texto(input("CODIGO_PROVEEDORA (ENTER = TODAS): "))
     fecha_hoy = datetime.now()
@@ -3169,7 +3173,7 @@ def detectar_prendas_3_meses():
         if codigo_proveedora_filtro and str(codigo_proveedora).strip().upper() != codigo_proveedora_filtro:
             continue
     
-        if dias_transcurridos >= 90:
+        if dias_transcurridos >= DIAS_PRENDA_VENCIDA:
             cantidad_encontradas += 1
 
             print(f"""
@@ -3187,9 +3191,9 @@ ESTADO: {estado}
 
     if cantidad_encontradas == 0:
         if codigo_proveedora_filtro:
-            print(f"NO SE ENCONTRARON PRENDAS DISPONIBLES CON 3 MESES O MAS PARA LA PROVEEDORA {codigo_proveedora_filtro}.")
+            print(f"NO SE ENCONTRARON PRENDAS DISPONIBLES CON {MESES_PRENDA_VENCIDA} MESES O MAS PARA LA PROVEEDORA {codigo_proveedora_filtro}.")
         else:
-            print("NO SE ENCONTRARON PRENDAS DISPONIBLES CON 3 MESES O MAS.")
+            print(f"NO SE ENCONTRARON PRENDAS DISPONIBLES CON {MESES_PRENDA_VENCIDA} MESES O MAS.")
         return
 
     print(f"TOTAL DE PRENDAS ENCONTRADAS: {cantidad_encontradas}")
@@ -3693,7 +3697,7 @@ def submenu_consultas_rendicion():
 def submenu_remarque():
     while True:
         print("\n=== REMARQUE ===")
-        print("1 - PRENDAS CON 3 MESES O MAS")
+        print(f"1 - PRENDAS CON {MESES_PRENDA_VENCIDA} MESES O MAS")
         print("2 - PROPONER REMARQUE")
         print("3 - APROBAR REMARQUE")
         print("0 - VOLVER")
@@ -3701,7 +3705,7 @@ def submenu_remarque():
         opcion = input("ELIGE UNA OPCION: ").strip()
 
         if opcion == "1":
-            detectar_prendas_3_meses()
+            detectar_prendas_vencidas()
 
         elif opcion == "2":
             proponer_remarque()

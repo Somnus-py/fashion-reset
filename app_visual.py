@@ -75,14 +75,14 @@ class AppFashionReset(ctk.CTk):
         self.frame_ingreso = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_venta = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_consultas = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
-        self.frame_resumen_general = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
-        self.frame_resumen_ventas = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
-        self.frame_buscador_prendas = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
-        self.frame_pendientes_validacion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
-        self.frame_proveedoras = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
+        self.frame_resumen_general = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
+        self.frame_resumen_ventas = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
+        self.frame_buscador_prendas = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
+        self.frame_pendientes_validacion = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
+        self.frame_proveedoras = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_editar = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_devolucion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
-        self.frame_rendicion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
+        self.frame_rendicion = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
 
         self.boton_ingreso = self._crear_boton_menu("Cargar Ingreso", self.abrir_ventana_ingreso)
         self.boton_ingreso.pack(pady=(10, 0))
@@ -1364,16 +1364,17 @@ class AppFashionReset(ctk.CTk):
         hoy = datetime.now()
 
         frame_filtros = ctk.CTkFrame(self.frame_resumen_general, fg_color=COLOR_FONDO)
-        frame_filtros.pack(fill="x", padx=20, pady=10)
+        frame_filtros.pack(fill="x", padx=20, pady=(6, 4))
+        frame_filtros.grid_columnconfigure(5, weight=1)
 
-        ctk.CTkLabel(frame_filtros, text="Mes", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(frame_filtros, text="Mes", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=(0, 6), pady=4, sticky="w")
         self.entry_resumen_mes = ctk.CTkEntry(frame_filtros, width=80)
-        self.entry_resumen_mes.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.entry_resumen_mes.grid(row=0, column=1, padx=(0, 14), pady=4, sticky="w")
         self.entry_resumen_mes.insert(0, f"{hoy.month:02d}")
 
-        ctk.CTkLabel(frame_filtros, text="Año", text_color=COLOR_TEXTO).grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(frame_filtros, text="Año", text_color=COLOR_TEXTO).grid(row=0, column=2, padx=(0, 6), pady=4, sticky="w")
         self.entry_resumen_anio = ctk.CTkEntry(frame_filtros, width=100)
-        self.entry_resumen_anio.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        self.entry_resumen_anio.grid(row=0, column=3, padx=(0, 14), pady=4, sticky="w")
         self.entry_resumen_anio.insert(0, str(hoy.year))
 
         boton_buscar = ctk.CTkButton(
@@ -1387,18 +1388,20 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.buscar_resumen_general
         )
-        boton_buscar.grid(row=1, column=2, padx=10, pady=5, sticky="w")
+        boton_buscar.grid(row=0, column=4, padx=(0, 14), pady=4, sticky="w")
 
         self.label_resumen_estado = ctk.CTkLabel(
-            self.frame_resumen_general,
-            text="Ingresá mes y año para generar el resumen general.",
+            frame_filtros,
+            text="",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
-        self.label_resumen_estado.pack(fill="x", padx=20, pady=(0, 10))
+        self.label_resumen_estado.grid(row=0, column=5, padx=(0, 0), pady=4, sticky="ew")
 
         frame_resumen = ctk.CTkFrame(self.frame_resumen_general, fg_color=COLOR_FONDO)
-        frame_resumen.pack(fill="x", padx=20, pady=(0, 10))
+        frame_resumen.pack(fill="x", padx=20, pady=(0, 4))
+        for columna in range(3):
+            frame_resumen.grid_columnconfigure(columna, weight=1, uniform="resumen_general")
 
         self.resumen_general_vars = {
             "cantidad_total_vendida": ctk.StringVar(value="-"),
@@ -1419,22 +1422,24 @@ class AppFashionReset(ctk.CTk):
         ]
 
         for indice, (texto, clave) in enumerate(labels_resumen):
-            fila = indice // 2
-            columna = (indice % 2) * 2
+            fila = indice // 3
+            columna = indice % 3
+            frame_indicador = ctk.CTkFrame(frame_resumen, fg_color=COLOR_FONDO)
+            frame_indicador.grid(row=fila, column=columna, padx=(0, 18), pady=3, sticky="ew")
 
             ctk.CTkLabel(
-                frame_resumen,
+                frame_indicador,
                 text=f"{texto}:",
                 text_color=COLOR_TEXTO,
                 font=FUENTE_SUBTITULO
-            ).grid(row=fila, column=columna, padx=(0, 8), pady=6, sticky="w")
+            ).pack(side="left", padx=(0, 6))
 
             ctk.CTkLabel(
-                frame_resumen,
+                frame_indicador,
                 textvariable=self.resumen_general_vars[clave],
                 text_color=COLOR_TEXTO,
                 font=FUENTE_SUBTITULO
-            ).grid(row=fila, column=columna + 1, padx=(0, 20), pady=6, sticky="w")
+            ).pack(side="left")
 
         label_detalle = ctk.CTkLabel(
             self.frame_resumen_general,
@@ -1442,20 +1447,17 @@ class AppFashionReset(ctk.CTk):
             text_color=COLOR_TEXTO,
             font=FUENTE_FORMULARIO_TITULO
         )
-        label_detalle.pack(anchor="w", padx=20, pady=(10, 5))
+        label_detalle.pack(anchor="w", padx=20, pady=(4, 4))
 
-        self.textbox_resumen_general = ctk.CTkTextbox(
+        self.frame_tabla_resumen_general = ctk.CTkScrollableFrame(
             self.frame_resumen_general,
-            height=260,
-            fg_color=COLOR_FONDO,
-            text_color=COLOR_TEXTO,
+            height=360,
             border_width=1,
-            border_color=COLOR_TEXTO
+            border_color=COLOR_TEXTO,
+            fg_color=COLOR_FONDO
         )
-        self.textbox_resumen_general.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self.textbox_resumen_general.configure(font=("Consolas", 13))
-        self.textbox_resumen_general.insert("1.0", "Todavía no hay resultados para mostrar.")
-        self.textbox_resumen_general.configure(state="disabled")
+        self.frame_tabla_resumen_general.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._mostrar_tabla_resumen_general([])
 
     def abrir_ventana_resumen_ventas(self):
         self._ocultar_frames_secundarios()
@@ -1470,17 +1472,18 @@ class AppFashionReset(ctk.CTk):
         hoy = datetime.now().strftime("%d/%m/%Y")
 
         frame_filtros = ctk.CTkFrame(self.frame_resumen_ventas, fg_color=COLOR_FONDO)
-        frame_filtros.pack(fill="x", padx=20, pady=10)
+        frame_filtros.pack(fill="x", padx=20, pady=(6, 4))
+        frame_filtros.grid_columnconfigure(7, weight=1)
 
-        ctk.CTkLabel(frame_filtros, text="Desde", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(frame_filtros, text="Desde", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=(0, 6), pady=4, sticky="w")
         self.entry_resumen_ventas_desde = ctk.CTkEntry(frame_filtros, width=120)
-        self.entry_resumen_ventas_desde.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.entry_resumen_ventas_desde.grid(row=0, column=1, padx=(0, 14), pady=4, sticky="w")
         self.entry_resumen_ventas_desde.insert(0, hoy)
         self._aplicar_mascara_fecha(self.entry_resumen_ventas_desde)
 
-        ctk.CTkLabel(frame_filtros, text="Hasta", text_color=COLOR_TEXTO).grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(frame_filtros, text="Hasta", text_color=COLOR_TEXTO).grid(row=0, column=2, padx=(0, 6), pady=4, sticky="w")
         self.entry_resumen_ventas_hasta = ctk.CTkEntry(frame_filtros, width=120)
-        self.entry_resumen_ventas_hasta.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        self.entry_resumen_ventas_hasta.grid(row=0, column=3, padx=(0, 14), pady=4, sticky="w")
         self.entry_resumen_ventas_hasta.insert(0, hoy)
         self._aplicar_mascara_fecha(self.entry_resumen_ventas_hasta)
 
@@ -1495,25 +1498,27 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.buscar_resumen_ventas
         )
-        boton_buscar.grid(row=1, column=2, padx=10, pady=5, sticky="w")
+        boton_buscar.grid(row=0, column=4, padx=(0, 14), pady=4, sticky="w")
 
         self.label_resumen_ventas_estado = ctk.CTkLabel(
-            self.frame_resumen_ventas,
+            frame_filtros,
             text="Ingresá un rango de fechas para ver las ventas.",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
-        self.label_resumen_ventas_estado.pack(fill="x", padx=20, pady=(0, 10))
+        self.label_resumen_ventas_estado.grid(row=0, column=5, columnspan=3, padx=(0, 0), pady=4, sticky="ew")
 
         frame_resumen = ctk.CTkFrame(self.frame_resumen_ventas, fg_color=COLOR_FONDO)
-        frame_resumen.pack(fill="x", padx=20, pady=(0, 10))
+        frame_resumen.pack(fill="x", padx=20, pady=(0, 4))
+        for columna in range(4):
+            frame_resumen.grid_columnconfigure(columna, weight=1, uniform="resumen_ventas")
 
         self.resumen_ventas_vars = {
             "cantidad_ventas": ctk.StringVar(value="-"),
             "cantidad_pagadas": ctk.StringVar(value="-"),
             "cantidad_pendientes": ctk.StringVar(value="-"),
             "total_vendido": ctk.StringVar(value="-"),
-            "total_pagado": ctk.StringVar(value="-"),
+            "comision_proveedoras": ctk.StringVar(value="-"),
             "total_pendiente": ctk.StringVar(value="-"),
             "total_descuentos": ctk.StringVar(value="-"),
             "ganancia": ctk.StringVar(value="-"),
@@ -1524,28 +1529,30 @@ class AppFashionReset(ctk.CTk):
             ("Pagadas", "cantidad_pagadas"),
             ("Pendientes", "cantidad_pendientes"),
             ("Total vendido", "total_vendido"),
-            ("Total pagado", "total_pagado"),
-            ("Total pendiente", "total_pendiente"),
+            ("Comision proveedoras", "comision_proveedoras"),
             ("Descuentos a proveedoras", "total_descuentos"),
+            ("Total pendiente", "total_pendiente"),
             ("GANANCIA", "ganancia"),
         ]
 
         for indice, (texto, clave) in enumerate(labels_resumen):
-            fila = indice // 2
-            columna = (indice % 2) * 2
+            fila = indice // 4
+            columna = indice % 4
             fuente = FUENTE_BOTON if clave == "ganancia" else FUENTE_SUBTITULO
+            frame_indicador = ctk.CTkFrame(frame_resumen, fg_color=COLOR_FONDO)
+            frame_indicador.grid(row=fila, column=columna, padx=(0, 18), pady=3, sticky="ew")
             ctk.CTkLabel(
-                frame_resumen,
+                frame_indicador,
                 text=f"{texto}:",
                 text_color=COLOR_TEXTO,
                 font=fuente
-            ).grid(row=fila, column=columna, padx=(0, 8), pady=6, sticky="w")
+            ).pack(side="left", padx=(0, 6))
             ctk.CTkLabel(
-                frame_resumen,
+                frame_indicador,
                 textvariable=self.resumen_ventas_vars[clave],
                 text_color=COLOR_TEXTO,
                 font=fuente
-            ).grid(row=fila, column=columna + 1, padx=(0, 20), pady=6, sticky="w")
+            ).pack(side="left")
 
         label_detalle = ctk.CTkLabel(
             self.frame_resumen_ventas,
@@ -1553,20 +1560,17 @@ class AppFashionReset(ctk.CTk):
             text_color=COLOR_TEXTO,
             font=FUENTE_FORMULARIO_TITULO
         )
-        label_detalle.pack(anchor="w", padx=20, pady=(10, 5))
+        label_detalle.pack(anchor="w", padx=20, pady=(4, 4))
 
-        self.textbox_resumen_ventas = ctk.CTkTextbox(
+        self.frame_tabla_resumen_ventas = ctk.CTkScrollableFrame(
             self.frame_resumen_ventas,
-            height=280,
-            fg_color=COLOR_FONDO,
-            text_color=COLOR_TEXTO,
+            height=360,
             border_width=1,
-            border_color=COLOR_TEXTO
+            border_color=COLOR_TEXTO,
+            fg_color=COLOR_FONDO
         )
-        self.textbox_resumen_ventas.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self.textbox_resumen_ventas.configure(font=("Consolas", 13))
-        self.textbox_resumen_ventas.insert("1.0", "Todavía no hay resultados para mostrar.")
-        self.textbox_resumen_ventas.configure(state="disabled")
+        self.frame_tabla_resumen_ventas.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._mostrar_tabla_resumen_ventas([])
 
     def abrir_buscador_prendas(self):
         self._ocultar_frames_secundarios()
@@ -1579,16 +1583,17 @@ class AppFashionReset(ctk.CTk):
         self._crear_encabezado(self.frame_buscador_prendas, "BUSCADOR DE PRENDAS", self.abrir_ventana_consultas)
 
         frame_busqueda = ctk.CTkFrame(self.frame_buscador_prendas, fg_color=COLOR_FONDO)
-        frame_busqueda.pack(fill="x", padx=20, pady=10)
+        frame_busqueda.pack(fill="x", padx=20, pady=(6, 4))
+        frame_busqueda.grid_columnconfigure(3, weight=1)
 
         ctk.CTkLabel(
             frame_busqueda,
             text="Buscar",
             text_color=COLOR_TEXTO
-        ).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        ).grid(row=0, column=0, padx=(0, 6), pady=4, sticky="w")
 
         self.entry_buscador_prendas = ctk.CTkEntry(frame_busqueda, width=260)
-        self.entry_buscador_prendas.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.entry_buscador_prendas.grid(row=0, column=1, padx=(0, 14), pady=4, sticky="w")
         self.entry_buscador_prendas.bind("<Return>", lambda event: self.buscar_prendas_desde_pantalla())
 
         boton_buscar = ctk.CTkButton(
@@ -1602,28 +1607,25 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.buscar_prendas_desde_pantalla
         )
-        boton_buscar.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        boton_buscar.grid(row=0, column=2, padx=(0, 14), pady=4, sticky="w")
 
         self.label_buscador_estado = ctk.CTkLabel(
-            self.frame_buscador_prendas,
-            text="Buscá por código, color, cliente, marca, artículo, proveedora o estado.",
+            frame_busqueda,
+            text="",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
-        self.label_buscador_estado.pack(fill="x", padx=20, pady=(0, 10))
+        self.label_buscador_estado.grid(row=0, column=3, padx=(0, 0), pady=4, sticky="ew")
 
-        self.textbox_buscador_prendas = ctk.CTkTextbox(
+        self.frame_tabla_buscador_prendas = ctk.CTkScrollableFrame(
             self.frame_buscador_prendas,
             height=360,
-            fg_color=COLOR_FONDO,
-            text_color=COLOR_TEXTO,
             border_width=1,
-            border_color=COLOR_TEXTO
+            border_color=COLOR_TEXTO,
+            fg_color=COLOR_FONDO
         )
-        self.textbox_buscador_prendas.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self.textbox_buscador_prendas.configure(font=("Consolas", 13))
-        self.textbox_buscador_prendas.insert("1.0", "Todavía no hay resultados para mostrar.")
-        self.textbox_buscador_prendas.configure(state="disabled")
+        self.frame_tabla_buscador_prendas.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._mostrar_tabla_buscador_prendas([])
 
     def abrir_ventana_pendientes_validacion(self):
         self._ocultar_frames_secundarios()
@@ -1640,7 +1642,8 @@ class AppFashionReset(ctk.CTk):
         )
 
         frame_acciones = ctk.CTkFrame(self.frame_pendientes_validacion, fg_color=COLOR_FONDO)
-        frame_acciones.pack(fill="x", padx=20, pady=10)
+        frame_acciones.pack(fill="x", padx=20, pady=(6, 4))
+        frame_acciones.grid_columnconfigure(5, weight=1)
 
         boton_buscar = ctk.CTkButton(
             frame_acciones,
@@ -1653,16 +1656,16 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.buscar_ventas_pendientes
         )
-        boton_buscar.pack(side="left", padx=(0, 10))
+        boton_buscar.grid(row=0, column=0, padx=(0, 10), pady=4, sticky="w")
 
         ctk.CTkLabel(
             frame_acciones,
             text="Código prenda",
             text_color=COLOR_TEXTO
-        ).pack(side="left", padx=(20, 8))
+        ).grid(row=0, column=1, padx=(10, 8), pady=4, sticky="w")
 
         self.entry_validar_pendiente = ctk.CTkEntry(frame_acciones, width=120)
-        self.entry_validar_pendiente.pack(side="left", padx=(0, 10))
+        self.entry_validar_pendiente.grid(row=0, column=2, padx=(0, 10), pady=4, sticky="w")
 
         boton_validar = ctk.CTkButton(
             frame_acciones,
@@ -1675,49 +1678,45 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.validar_venta_pendiente_desde_pantalla
         )
-        boton_validar.pack(side="left", padx=(0, 10))
+        boton_validar.grid(row=0, column=3, padx=(0, 14), pady=4, sticky="w")
 
         self.label_pendientes_estado = ctk.CTkLabel(
             frame_acciones,
-            text="Mostrá las ventas pendientes de validación.",
+            text="",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
-        self.label_pendientes_estado.pack(side="left", padx=10)
+        self.label_pendientes_estado.grid(row=0, column=4, columnspan=2, padx=(0, 0), pady=4, sticky="ew")
 
         frame_resumen = ctk.CTkFrame(self.frame_pendientes_validacion, fg_color=COLOR_FONDO)
-        frame_resumen.pack(fill="x", padx=20, pady=(0, 10))
+        frame_resumen.pack(fill="x", padx=20, pady=(0, 4))
+        for columna in range(2):
+            frame_resumen.grid_columnconfigure(columna, weight=1, uniform="pendientes_resumen")
 
         self.pendientes_vars = {
             "cantidad_pendientes": ctk.StringVar(value="-"),
             "total_importe_pendiente": ctk.StringVar(value="-"),
         }
 
-        ctk.CTkLabel(
-            frame_resumen,
-            text="Cantidad pendientes:",
-            text_color=COLOR_TEXTO,
-            font=FUENTE_SUBTITULO
-        ).grid(row=0, column=0, padx=(0, 8), pady=6, sticky="w")
-        ctk.CTkLabel(
-            frame_resumen,
-            textvariable=self.pendientes_vars["cantidad_pendientes"],
-            text_color=COLOR_TEXTO,
-            font=FUENTE_SUBTITULO
-        ).grid(row=0, column=1, padx=(0, 20), pady=6, sticky="w")
-
-        ctk.CTkLabel(
-            frame_resumen,
-            text="Total importe pendiente:",
-            text_color=COLOR_TEXTO,
-            font=FUENTE_SUBTITULO
-        ).grid(row=0, column=2, padx=(0, 8), pady=6, sticky="w")
-        ctk.CTkLabel(
-            frame_resumen,
-            textvariable=self.pendientes_vars["total_importe_pendiente"],
-            text_color=COLOR_TEXTO,
-            font=FUENTE_SUBTITULO
-        ).grid(row=0, column=3, padx=(0, 20), pady=6, sticky="w")
+        labels_resumen = [
+            ("Cantidad pendientes", "cantidad_pendientes"),
+            ("Total importe pendiente", "total_importe_pendiente"),
+        ]
+        for columna, (texto, clave) in enumerate(labels_resumen):
+            frame_indicador = ctk.CTkFrame(frame_resumen, fg_color=COLOR_FONDO)
+            frame_indicador.grid(row=0, column=columna, padx=(0, 18), pady=3, sticky="ew")
+            ctk.CTkLabel(
+                frame_indicador,
+                text=f"{texto}:",
+                text_color=COLOR_TEXTO,
+                font=FUENTE_SUBTITULO
+            ).pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(
+                frame_indicador,
+                textvariable=self.pendientes_vars[clave],
+                text_color=COLOR_TEXTO,
+                font=FUENTE_SUBTITULO
+            ).pack(side="left")
 
         label_detalle = ctk.CTkLabel(
             self.frame_pendientes_validacion,
@@ -1725,20 +1724,17 @@ class AppFashionReset(ctk.CTk):
             text_color=COLOR_TEXTO,
             font=FUENTE_FORMULARIO_TITULO
         )
-        label_detalle.pack(anchor="w", padx=20, pady=(10, 5))
+        label_detalle.pack(anchor="w", padx=20, pady=(4, 4))
 
-        self.textbox_pendientes = ctk.CTkTextbox(
+        self.frame_tabla_pendientes = ctk.CTkScrollableFrame(
             self.frame_pendientes_validacion,
-            height=260,
-            fg_color=COLOR_FONDO,
-            text_color=COLOR_TEXTO,
+            height=360,
             border_width=1,
-            border_color=COLOR_TEXTO
+            border_color=COLOR_TEXTO,
+            fg_color=COLOR_FONDO
         )
-        self.textbox_pendientes.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self.textbox_pendientes.configure(font=("Consolas", 13))
-        self.textbox_pendientes.insert("1.0", "Todavía no hay resultados para mostrar.")
-        self.textbox_pendientes.configure(state="disabled")
+        self.frame_tabla_pendientes.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._mostrar_tabla_pendientes([])
 
     def abrir_formulario_proveedora(self):
         self._ocultar_frames_secundarios()
@@ -1803,13 +1799,14 @@ class AppFashionReset(ctk.CTk):
         self._crear_encabezado(self.frame_proveedoras, "VER PROVEEDORA", self.abrir_ventana_proveedoras)
 
         frame_busqueda = ctk.CTkFrame(self.frame_proveedoras, fg_color=COLOR_FONDO)
-        frame_busqueda.pack(fill="x", padx=20, pady=10)
+        frame_busqueda.pack(fill="x", padx=20, pady=(6, 4))
+        frame_busqueda.grid_columnconfigure(7, weight=1)
 
         ctk.CTkLabel(frame_busqueda, text="Código proveedora", text_color=COLOR_TEXTO).grid(
-            row=0, column=0, padx=10, pady=5, sticky="w"
+            row=0, column=0, padx=(0, 6), pady=4, sticky="w"
         )
         self.entry_buscar_proveedora = ctk.CTkEntry(frame_busqueda, width=160)
-        self.entry_buscar_proveedora.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.entry_buscar_proveedora.grid(row=0, column=1, padx=(0, 14), pady=4, sticky="w")
 
         boton_buscar = ctk.CTkButton(
             frame_busqueda,
@@ -1822,7 +1819,7 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.buscar_proveedora_desde_pantalla
         )
-        boton_buscar.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        boton_buscar.grid(row=0, column=2, padx=(0, 10), pady=4, sticky="w")
 
 
         boton_todas = ctk.CTkButton(
@@ -1836,10 +1833,10 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.mostrar_todas_las_proveedoras
         )
-        boton_todas.grid(row=1, column=2, padx=10, pady=5, sticky="w")
+        boton_todas.grid(row=0, column=3, padx=(0, 14), pady=4, sticky="w")
 
         ctk.CTkLabel(frame_busqueda, text="Filtrar prendas", text_color=COLOR_TEXTO).grid(
-            row=0, column=3, padx=10, pady=5, sticky="w"
+            row=0, column=4, padx=(0, 6), pady=4, sticky="w"
         )
         self.filtro_estado_proveedora = ctk.StringVar(value="TODAS")
         self.option_filtro_estado_proveedora = ctk.CTkOptionMenu(
@@ -1855,7 +1852,7 @@ class AppFashionReset(ctk.CTk):
             dropdown_text_color=COLOR_TEXTO,
             command=lambda _valor: self.actualizar_filtro_proveedora()
         )
-        self.option_filtro_estado_proveedora.grid(row=1, column=3, padx=10, pady=5, sticky="w")
+        self.option_filtro_estado_proveedora.grid(row=0, column=5, padx=(0, 14), pady=4, sticky="w")
 
         self.boton_exportar_disponibles_proveedora = ctk.CTkButton(
             frame_busqueda,
@@ -1869,15 +1866,15 @@ class AppFashionReset(ctk.CTk):
             state="disabled",
             command=self.exportar_disponibles_proveedora_actual
         )
-        self.boton_exportar_disponibles_proveedora.grid(row=1, column=4, padx=10, pady=5, sticky="w")
+        self.boton_exportar_disponibles_proveedora.grid(row=0, column=6, padx=(0, 14), pady=4, sticky="w")
 
         self.label_estado_ver_proveedora = ctk.CTkLabel(
-            self.frame_proveedoras,
-            text="Ingresá un código para consultar la proveedora.",
+            frame_busqueda,
+            text="",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
-        self.label_estado_ver_proveedora.pack(fill="x", padx=20, pady=(0, 10))
+        self.label_estado_ver_proveedora.grid(row=0, column=7, padx=(0, 0), pady=4, sticky="ew")
 
         self.datos_proveedora_vars = {
             "nombre_proveedora": ctk.StringVar(value="-"),
@@ -1895,7 +1892,9 @@ class AppFashionReset(ctk.CTk):
         }
 
         frame_datos = ctk.CTkFrame(self.frame_proveedoras, fg_color=COLOR_FONDO)
-        frame_datos.pack(fill="x", padx=20, pady=(0, 10))
+        frame_datos.pack(fill="x", padx=20, pady=(0, 4))
+        for columna in range(4):
+            frame_datos.grid_columnconfigure(columna, weight=1, uniform="datos_proveedora")
 
         labels = [
             ("Nombre", "nombre_proveedora"),
@@ -1913,13 +1912,15 @@ class AppFashionReset(ctk.CTk):
         ]
 
         for indice, (texto, clave) in enumerate(labels):
-            fila = indice // 2
-            columna = (indice % 2) * 2
-            ctk.CTkLabel(frame_datos, text=f"{texto}:", text_color=COLOR_TEXTO, font=FUENTE_SUBTITULO).grid(
-                row=fila, column=columna, padx=(0, 8), pady=6, sticky="w"
+            fila = indice // 4
+            columna = indice % 4
+            frame_indicador = ctk.CTkFrame(frame_datos, fg_color=COLOR_FONDO)
+            frame_indicador.grid(row=fila, column=columna, padx=(0, 18), pady=3, sticky="ew")
+            ctk.CTkLabel(frame_indicador, text=f"{texto}:", text_color=COLOR_TEXTO, font=FUENTE_SUBTITULO).pack(
+                side="left", padx=(0, 6)
             )
-            ctk.CTkLabel(frame_datos, textvariable=self.datos_proveedora_vars[clave], text_color=COLOR_TEXTO, font=FUENTE_SUBTITULO).grid(
-                row=fila, column=columna + 1, padx=(0, 20), pady=6, sticky="w"
+            ctk.CTkLabel(frame_indicador, textvariable=self.datos_proveedora_vars[clave], text_color=COLOR_TEXTO, font=FUENTE_SUBTITULO).pack(
+                side="left"
             )
 
         label_detalle = ctk.CTkLabel(
@@ -1928,20 +1929,17 @@ class AppFashionReset(ctk.CTk):
             text_color=COLOR_TEXTO,
             font=FUENTE_FORMULARIO_TITULO
         )
-        label_detalle.pack(anchor="w", padx=20, pady=(10, 5))
+        label_detalle.pack(anchor="w", padx=20, pady=(4, 4))
 
-        self.textbox_detalle_proveedora = ctk.CTkTextbox(
+        self.frame_tabla_proveedora = ctk.CTkScrollableFrame(
             self.frame_proveedoras,
-            height=240,
-            fg_color=COLOR_FONDO,
-            text_color=COLOR_TEXTO,
+            height=360,
             border_width=1,
-            border_color=COLOR_TEXTO
+            border_color=COLOR_TEXTO,
+            fg_color=COLOR_FONDO
         )
-        self.textbox_detalle_proveedora.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self.textbox_detalle_proveedora.configure(font=("Consolas", 13))
-        self.textbox_detalle_proveedora.insert("1.0", "Todavía no hay resultados para mostrar.")
-        self.textbox_detalle_proveedora.configure(state="disabled")
+        self.frame_tabla_proveedora.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._mostrar_tabla_proveedora([])
         self.detalle_proveedora_actual = []
         self.proveedora_actual = None
 
@@ -1958,21 +1956,22 @@ class AppFashionReset(ctk.CTk):
         hoy = datetime.now()
 
         frame_filtros = ctk.CTkFrame(self.frame_rendicion, fg_color=COLOR_FONDO)
-        frame_filtros.pack(fill="x", padx=20, pady=10)
+        frame_filtros.pack(fill="x", padx=20, pady=(6, 4))
+        frame_filtros.grid_columnconfigure(8, weight=1)
 
-        ctk.CTkLabel(frame_filtros, text="Mes", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(frame_filtros, text="Mes", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=(0, 6), pady=4, sticky="w")
         self.entry_rendicion_mes = ctk.CTkEntry(frame_filtros, width=80)
-        self.entry_rendicion_mes.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.entry_rendicion_mes.grid(row=0, column=1, padx=(0, 14), pady=4, sticky="w")
         self.entry_rendicion_mes.insert(0, f"{hoy.month:02d}")
 
-        ctk.CTkLabel(frame_filtros, text="Año", text_color=COLOR_TEXTO).grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(frame_filtros, text="Año", text_color=COLOR_TEXTO).grid(row=0, column=2, padx=(0, 6), pady=4, sticky="w")
         self.entry_rendicion_anio = ctk.CTkEntry(frame_filtros, width=100)
-        self.entry_rendicion_anio.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+        self.entry_rendicion_anio.grid(row=0, column=3, padx=(0, 14), pady=4, sticky="w")
         self.entry_rendicion_anio.insert(0, str(hoy.year))
 
-        ctk.CTkLabel(frame_filtros, text="Código proveedora", text_color=COLOR_TEXTO).grid(row=0, column=2, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(frame_filtros, text="Código proveedora", text_color=COLOR_TEXTO).grid(row=0, column=4, padx=(0, 6), pady=4, sticky="w")
         self.entry_rendicion_codigo = ctk.CTkEntry(frame_filtros, width=160)
-        self.entry_rendicion_codigo.grid(row=1, column=2, padx=10, pady=5, sticky="w")
+        self.entry_rendicion_codigo.grid(row=0, column=5, padx=(0, 14), pady=4, sticky="w")
 
         boton_buscar = ctk.CTkButton(
             frame_filtros,
@@ -1985,7 +1984,7 @@ class AppFashionReset(ctk.CTk):
             border_color=COLOR_TEXTO,
             command=self.buscar_rendicion
         )
-        boton_buscar.grid(row=1, column=3, padx=10, pady=5, sticky="w")
+        boton_buscar.grid(row=0, column=6, padx=(0, 10), pady=4, sticky="w")
 
         self.boton_exportar_rendicion = ctk.CTkButton(
             frame_filtros,
@@ -1999,18 +1998,20 @@ class AppFashionReset(ctk.CTk):
             state="disabled",
             command=self.exportar_rendicion_actual
         )
-        self.boton_exportar_rendicion.grid(row=1, column=4, padx=10, pady=5, sticky="w")
+        self.boton_exportar_rendicion.grid(row=0, column=7, padx=(0, 14), pady=4, sticky="w")
 
         self.label_rendicion_estado = ctk.CTkLabel(
-            self.frame_rendicion,
-            text="Ingresá mes, año y código de proveedora para generar la rendición.",
+            frame_filtros,
+            text="",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
-        self.label_rendicion_estado.pack(fill="x", padx=20, pady=(0, 10))
+        self.label_rendicion_estado.grid(row=0, column=8, padx=(0, 0), pady=4, sticky="ew")
 
         frame_resumen = ctk.CTkFrame(self.frame_rendicion, fg_color=COLOR_FONDO)
-        frame_resumen.pack(fill="x", padx=20, pady=(0, 10))
+        frame_resumen.pack(fill="x", padx=20, pady=(0, 4))
+        for columna in range(4):
+            frame_resumen.grid_columnconfigure(columna, weight=1, uniform="rendicion_resumen")
 
         self.resumen_vars = {
             "nombre_proveedora": ctk.StringVar(value="-"),
@@ -2023,32 +2024,41 @@ class AppFashionReset(ctk.CTk):
         }
 
         labels_resumen = [
-            ("Nombre proveedora", "nombre_proveedora"),
-            ("Cantidad prendas", "cantidad_prendas"),
-            ("Total vendido", "total_vendido"),
-            ("Comisión proveedora", "comision_proveedora"),
-            ("Comisión Fashion Reset", "comision_fashion_reset"),
-            ("Descuentos", "total_descuentos"),
-            ("Saldo final a pagar", "saldo_final"),
+            ("Nombre", "nombre_proveedora", 0, 0, 2),
+            ("Cantidad prendas", "cantidad_prendas", 0, 2, 1),
+            ("Total vendido", "total_vendido", 0, 3, 1),
+            ("Comisión proveedora", "comision_proveedora", 1, 0, 1),
+            ("Comisión Fashion Reset", "comision_fashion_reset", 1, 1, 1),
+            ("Descuentos", "total_descuentos", 1, 2, 1),
+            ("Saldo final a pagar", "saldo_final", 1, 3, 1),
         ]
 
-        for indice, (texto, clave) in enumerate(labels_resumen):
-            fila = indice // 2
-            columna = (indice % 2) * 2
+        for texto, clave, fila, columna, columnas_ocupadas in labels_resumen:
+            frame_indicador = ctk.CTkFrame(frame_resumen, fg_color=COLOR_FONDO)
+            frame_indicador.grid(
+                row=fila,
+                column=columna,
+                columnspan=columnas_ocupadas,
+                padx=(0, 18),
+                pady=3,
+                sticky="ew"
+            )
+            frame_indicador.grid_columnconfigure(1, weight=1)
 
             ctk.CTkLabel(
-                frame_resumen,
+                frame_indicador,
                 text=f"{texto}:",
                 text_color=COLOR_TEXTO,
                 font=FUENTE_SUBTITULO
-            ).grid(row=fila, column=columna, padx=(0, 8), pady=6, sticky="w")
+            ).grid(row=0, column=0, padx=(0, 6), sticky="w")
 
             ctk.CTkLabel(
-                frame_resumen,
+                frame_indicador,
                 textvariable=self.resumen_vars[clave],
                 text_color=COLOR_TEXTO,
-                font=FUENTE_SUBTITULO
-            ).grid(row=fila, column=columna + 1, padx=(0, 20), pady=6, sticky="w")
+                font=FUENTE_SUBTITULO,
+                anchor="w"
+            ).grid(row=0, column=1, sticky="ew")
 
         label_detalle = ctk.CTkLabel(
             self.frame_rendicion,
@@ -2056,20 +2066,17 @@ class AppFashionReset(ctk.CTk):
             text_color=COLOR_TEXTO,
             font=FUENTE_FORMULARIO_TITULO
         )
-        label_detalle.pack(anchor="w", padx=20, pady=(10, 5))
+        label_detalle.pack(anchor="w", padx=20, pady=(4, 4))
 
-        self.textbox_rendicion = ctk.CTkTextbox(
+        self.frame_tabla_rendicion = ctk.CTkScrollableFrame(
             self.frame_rendicion,
-            height=260,
-            fg_color=COLOR_FONDO,
-            text_color=COLOR_TEXTO,
+            height=360,
             border_width=1,
-            border_color=COLOR_TEXTO
+            border_color=COLOR_TEXTO,
+            fg_color=COLOR_FONDO
         )
-        self.textbox_rendicion.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self.textbox_rendicion.configure(font=("Consolas", 13))
-        self.textbox_rendicion.insert("1.0", "Todavía no hay resultados para mostrar.")
-        self.textbox_rendicion.configure(state="disabled")
+        self.frame_tabla_rendicion.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._mostrar_tabla_rendicion([])
 
     def guardar_lote_venta(self, entry_fecha, entry_cliente):
         fecha_venta = entry_fecha.get().strip()
@@ -2267,7 +2274,7 @@ class AppFashionReset(ctk.CTk):
         if not resultado:
             self.label_resumen_estado.configure(text=datos, text_color="#B00020")
             self._limpiar_resumen_general()
-            self._mostrar_desglose_resumen_general("No se encontraron resultados para mostrar.")
+            self._mostrar_tabla_resumen_general([], "No se encontraron resultados para mostrar.")
             return
 
         self.label_resumen_estado.configure(
@@ -2280,9 +2287,7 @@ class AppFashionReset(ctk.CTk):
         self.resumen_general_vars["total_fashion_reset"].set(self._format_moneda(datos["total_fashion_reset"]))
         self.resumen_general_vars["total_descuentos"].set(self._format_moneda(datos["total_descuentos"]))
         self.resumen_general_vars["total_neto_a_pagar"].set(self._format_moneda(datos["total_neto_a_pagar"]))
-        self._mostrar_desglose_resumen_general(
-            self._construir_tabla_resumen_general(datos["detalle_proveedoras"])
-        )
+        self._mostrar_tabla_resumen_general(datos["detalle_proveedoras"])
 
     def buscar_resumen_ventas(self):
         resultado, datos = calcular_resumen_ventas(
@@ -2293,7 +2298,7 @@ class AppFashionReset(ctk.CTk):
         if not resultado:
             self.label_resumen_ventas_estado.configure(text=datos, text_color="#B00020")
             self._limpiar_resumen_ventas()
-            self._mostrar_resumen_ventas("No se encontraron resultados para mostrar.")
+            self._mostrar_tabla_resumen_ventas([], "No se encontraron resultados para mostrar.")
             return
 
         self.label_resumen_ventas_estado.configure(
@@ -2307,13 +2312,11 @@ class AppFashionReset(ctk.CTk):
         self.resumen_ventas_vars["cantidad_pagadas"].set(str(datos["cantidad_pagadas"]))
         self.resumen_ventas_vars["cantidad_pendientes"].set(str(datos["cantidad_pendientes"]))
         self.resumen_ventas_vars["total_vendido"].set(self._format_moneda(datos["total_vendido"]))
-        self.resumen_ventas_vars["total_pagado"].set(self._format_moneda(datos["total_pagado"]))
+        self.resumen_ventas_vars["comision_proveedoras"].set(self._format_moneda(datos["comision_proveedoras"]))
         self.resumen_ventas_vars["total_pendiente"].set(self._format_moneda(datos["total_pendiente"]))
         self.resumen_ventas_vars["total_descuentos"].set(self._format_moneda(datos["total_descuentos"]))
         self.resumen_ventas_vars["ganancia"].set(self._format_moneda(datos["ganancia"]))
-        self._mostrar_resumen_ventas(
-            self._construir_tabla_resumen_ventas(datos["ventas"])
-        )
+        self._mostrar_tabla_resumen_ventas(datos["ventas"])
 
     def buscar_prendas_desde_pantalla(self):
         resultado, datos = buscar_prendas_desde_gui(
@@ -2322,16 +2325,14 @@ class AppFashionReset(ctk.CTk):
 
         if not resultado:
             self.label_buscador_estado.configure(text=datos, text_color="#B00020")
-            self._mostrar_buscador_prendas("No se encontraron resultados para mostrar.")
+            self._mostrar_tabla_buscador_prendas([], "No se encontraron resultados para mostrar.")
             return
 
         self.label_buscador_estado.configure(
             text=f"Se encontraron {datos['cantidad']} prendas para: {datos['texto_busqueda']}.",
             text_color="#2E5E2E"
         )
-        self._mostrar_buscador_prendas(
-            self._construir_tabla_buscador_prendas(datos["resultados"])
-        )
+        self._mostrar_tabla_buscador_prendas(datos["resultados"])
 
     def buscar_ventas_pendientes(self):
         resultado, datos = calcular_ventas_pendientes()
@@ -2339,7 +2340,7 @@ class AppFashionReset(ctk.CTk):
         if not resultado:
             self.label_pendientes_estado.configure(text=datos, text_color="#B00020")
             self._limpiar_pendientes_validacion()
-            self._mostrar_ventas_pendientes("No se encontraron resultados para mostrar.")
+            self._mostrar_tabla_pendientes([], "No se encontraron resultados para mostrar.")
             return
 
         self.label_pendientes_estado.configure(
@@ -2350,9 +2351,7 @@ class AppFashionReset(ctk.CTk):
         self.pendientes_vars["total_importe_pendiente"].set(
             self._format_moneda(datos["total_importe_pendiente"])
         )
-        self._mostrar_ventas_pendientes(
-            self._construir_tabla_pendientes(datos["ventas_pendientes"])
-        )
+        self._mostrar_tabla_pendientes(datos["ventas_pendientes"])
 
     def guardar_proveedora_desde_pantalla(self):
         resultado, datos = crear_proveedora_desde_gui(
@@ -3115,7 +3114,7 @@ class AppFashionReset(ctk.CTk):
         if not resultado:
             self.label_estado_ver_proveedora.configure(text=datos, text_color="#B00020")
             self._limpiar_datos_proveedora()
-            self._mostrar_detalle_proveedora("Todavía no hay resultados para mostrar.")
+            self._mostrar_tabla_proveedora([])
             return
 
         self.label_estado_ver_proveedora.configure(
@@ -3148,7 +3147,7 @@ class AppFashionReset(ctk.CTk):
         if not resultado:
             self.label_estado_ver_proveedora.configure(text=datos, text_color="#B00020")
             self._limpiar_datos_proveedora()
-            self._mostrar_detalle_proveedora("Todavía no hay resultados para mostrar.")
+            self._mostrar_tabla_proveedoras([])
             return
 
         self.label_estado_ver_proveedora.configure(
@@ -3159,7 +3158,7 @@ class AppFashionReset(ctk.CTk):
         self.detalle_proveedora_actual = []
         self.proveedora_actual = None
         self.boton_exportar_disponibles_proveedora.configure(state="disabled")
-        self._mostrar_detalle_proveedora(self._construir_tabla_todas_proveedoras(datos))
+        self._mostrar_tabla_proveedoras(datos)
 
 
     def validar_venta_pendiente_desde_pantalla(self):
@@ -3186,7 +3185,7 @@ class AppFashionReset(ctk.CTk):
             self.boton_exportar_rendicion.configure(state="disabled")
             self.label_rendicion_estado.configure(text=datos, text_color="#B00020")
             self._limpiar_resumen_rendicion()
-            self._mostrar_detalle_rendicion("No se encontraron resultados para mostrar.")
+            self._mostrar_tabla_rendicion([], "No se encontraron resultados para mostrar.")
             return
 
         self.rendicion_actual = datos
@@ -3349,34 +3348,492 @@ class AppFashionReset(ctk.CTk):
         self.fila_actual_aprobacion_remarque = 1
 
     def _mostrar_desglose_resumen_general(self, texto):
+        if not hasattr(self, "textbox_resumen_general"):
+            self._mostrar_tabla_resumen_general([], texto)
+            return
+
         self.textbox_resumen_general.configure(state="normal")
         self.textbox_resumen_general.delete("1.0", "end")
         self.textbox_resumen_general.insert("1.0", texto)
         self.textbox_resumen_general.configure(state="disabled")
 
+    def _mostrar_tabla_resumen_general(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
+        for widget in self.frame_tabla_resumen_general.winfo_children():
+            widget.destroy()
+
+        columnas = [
+            ("Proveedora", 1, 12),
+            ("Prendas", 0, 8),
+            ("Total vendido", 1, 14),
+            ("60% Prov.", 1, 14),
+            ("Descuentos", 1, 14),
+            ("Neto a pagar", 1, 14),
+        ]
+
+        for indice, (_, peso, _) in enumerate(columnas):
+            self.frame_tabla_resumen_general.grid_columnconfigure(indice, weight=peso, uniform="tabla_resumen_general")
+
+        if not filas:
+            ctk.CTkLabel(
+                self.frame_tabla_resumen_general,
+                text=mensaje_vacio,
+                text_color="#555555",
+                font=FUENTE_SUBTITULO
+            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
+            return
+
+        for columna, (titulo, _, _) in enumerate(columnas):
+            ctk.CTkLabel(
+                self.frame_tabla_resumen_general,
+                text=titulo,
+                text_color=COLOR_TEXTO,
+                font=("Arial", 13, "bold"),
+                anchor="w",
+                fg_color="#F2F2F2",
+                height=30
+            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+
+        for fila_indice, fila in enumerate(filas, start=1):
+            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
+            valores = [
+                str(fila["codigo_proveedora"] or ""),
+                str(fila["cantidad_prendas"]),
+                self._format_moneda(fila["total_vendido"]),
+                self._format_moneda(fila["comision_proveedora"]),
+                self._format_moneda(fila["descuentos"]),
+                self._format_moneda(fila["saldo_final"]),
+            ]
+
+            for columna, valor in enumerate(valores):
+                texto = str(valor)
+                ancho_maximo = columnas[columna][2]
+                if len(texto) > ancho_maximo:
+                    texto = texto[:ancho_maximo - 1] + "."
+
+                ctk.CTkLabel(
+                    self.frame_tabla_resumen_general,
+                    text=texto,
+                    text_color=COLOR_TEXTO,
+                    font=("Arial", 13),
+                    anchor="w",
+                    fg_color=fondo,
+                    height=28
+                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
+
     def _mostrar_resumen_ventas(self, texto):
+        if not hasattr(self, "textbox_resumen_ventas"):
+            self._mostrar_tabla_resumen_ventas([], texto)
+            return
+
         self.textbox_resumen_ventas.configure(state="normal")
         self.textbox_resumen_ventas.delete("1.0", "end")
         self.textbox_resumen_ventas.insert("1.0", texto)
         self.textbox_resumen_ventas.configure(state="disabled")
 
+    def _mostrar_tabla_resumen_ventas(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
+        for widget in self.frame_tabla_resumen_ventas.winfo_children():
+            widget.destroy()
+
+        columnas = [
+            ("Fecha", 0, 10),
+            ("Proveedora", 0, 8),
+            ("Codigo", 0, 8),
+            ("Articulo", 4, 80),
+            ("Color", 3, 60),
+            ("Precio", 0, 12),
+            ("Cliente", 1, 16),
+            ("Tipo pago", 1, 14),
+            ("Validacion", 1, 12),
+        ]
+
+        for indice, (_, peso, _) in enumerate(columnas):
+            self.frame_tabla_resumen_ventas.grid_columnconfigure(indice, weight=peso, uniform="tabla_resumen_ventas")
+
+        if not filas:
+            ctk.CTkLabel(
+                self.frame_tabla_resumen_ventas,
+                text=mensaje_vacio,
+                text_color="#555555",
+                font=FUENTE_SUBTITULO
+            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
+            return
+
+        for columna, (titulo, _, _) in enumerate(columnas):
+            ctk.CTkLabel(
+                self.frame_tabla_resumen_ventas,
+                text=titulo,
+                text_color=COLOR_TEXTO,
+                font=("Arial", 13, "bold"),
+                anchor="w",
+                fg_color="#F2F2F2",
+                height=30
+            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+
+        for fila_indice, fila in enumerate(filas, start=1):
+            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
+            valores = [
+                self._formatear_fecha(fila["fecha_venta"]),
+                str(fila["codigo_proveedora"] or ""),
+                str(fila["codigo_prenda"] or ""),
+                str(fila["articulo"] or ""),
+                str(fila["color"] or ""),
+                self._format_moneda(fila["precio_venta"]),
+                str(fila["cliente"] or ""),
+                str(fila["tipo_pago"] or ""),
+                str(fila["validacion"] or ""),
+            ]
+
+            for columna, valor in enumerate(valores):
+                texto = str(valor)
+                ancho_maximo = columnas[columna][2]
+                if len(texto) > ancho_maximo:
+                    texto = texto[:ancho_maximo - 1] + "."
+                wraplength = 230 if columna == 3 else 170 if columna == 4 else 0
+                alto = 44 if columna in (3, 4) else 28
+
+                ctk.CTkLabel(
+                    self.frame_tabla_resumen_ventas,
+                    text=texto,
+                    text_color=COLOR_TEXTO,
+                    font=("Arial", 13),
+                    anchor="w",
+                    justify="left",
+                    wraplength=wraplength,
+                    fg_color=fondo,
+                    height=alto
+                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
+
     def _mostrar_buscador_prendas(self, texto):
+        if not hasattr(self, "textbox_buscador_prendas"):
+            self._mostrar_tabla_buscador_prendas([], texto)
+            return
+
         self.textbox_buscador_prendas.configure(state="normal")
         self.textbox_buscador_prendas.delete("1.0", "end")
         self.textbox_buscador_prendas.insert("1.0", texto)
         self.textbox_buscador_prendas.configure(state="disabled")
 
     def _mostrar_ventas_pendientes(self, texto):
+        if not hasattr(self, "textbox_pendientes"):
+            self._mostrar_tabla_pendientes([], texto)
+            return
+
         self.textbox_pendientes.configure(state="normal")
         self.textbox_pendientes.delete("1.0", "end")
         self.textbox_pendientes.insert("1.0", texto)
         self.textbox_pendientes.configure(state="disabled")
 
+    def _mostrar_tabla_buscador_prendas(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
+        for widget in self.frame_tabla_buscador_prendas.winfo_children():
+            widget.destroy()
+
+        columnas = [
+            ("Codigo", 0, 8),
+            ("Prov.", 0, 8),
+            ("Articulo", 4, 80),
+            ("Marca", 1, 18),
+            ("Talle", 0, 8),
+            ("Color", 3, 60),
+            ("Estado", 1, 12),
+            ("Ingreso", 0, 10),
+            ("Venta", 0, 10),
+            ("P. Venta", 1, 12),
+            ("Cliente", 1, 16),
+            ("Validacion", 1, 12),
+        ]
+
+        for indice, (_, peso, _) in enumerate(columnas):
+            self.frame_tabla_buscador_prendas.grid_columnconfigure(indice, weight=peso, uniform="tabla_buscador")
+
+        if not filas:
+            ctk.CTkLabel(
+                self.frame_tabla_buscador_prendas,
+                text=mensaje_vacio,
+                text_color="#555555",
+                font=FUENTE_SUBTITULO
+            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
+            return
+
+        for columna, (titulo, _, _) in enumerate(columnas):
+            ctk.CTkLabel(
+                self.frame_tabla_buscador_prendas,
+                text=titulo,
+                text_color=COLOR_TEXTO,
+                font=("Arial", 13, "bold"),
+                anchor="w",
+                fg_color="#F2F2F2",
+                height=30
+            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+
+        for fila_indice, fila in enumerate(filas, start=1):
+            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
+            precio_venta = fila["precio_venta"]
+            precio_venta_texto = (
+                self._format_moneda(precio_venta)
+                if isinstance(precio_venta, (int, float))
+                else str(precio_venta or "")
+            )
+            valores = [
+                str(fila["codigo_prenda"] or ""),
+                str(fila["codigo_proveedora"] or ""),
+                str(fila["articulo"] or ""),
+                str(fila["marca"] or ""),
+                str(fila["talle"] or ""),
+                str(fila["color"] or ""),
+                str(fila["estado"] or ""),
+                self._formatear_fecha(fila["fecha_ingreso"]),
+                self._formatear_fecha(fila["fecha_venta"]),
+                precio_venta_texto,
+                str(fila["cliente"] or ""),
+                str(fila["validacion"] or ""),
+            ]
+
+            for columna, valor in enumerate(valores):
+                texto = str(valor)
+                ancho_maximo = columnas[columna][2]
+                if len(texto) > ancho_maximo:
+                    texto = texto[:ancho_maximo - 1] + "."
+                wraplength = 230 if columna == 2 else 170 if columna == 5 else 0
+                alto = 44 if columna in (2, 5) else 28
+
+                ctk.CTkLabel(
+                    self.frame_tabla_buscador_prendas,
+                    text=texto,
+                    text_color=COLOR_TEXTO,
+                    font=("Arial", 13),
+                    anchor="w",
+                    justify="left",
+                    wraplength=wraplength,
+                    fg_color=fondo,
+                    height=alto
+                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
+
+    def _mostrar_tabla_pendientes(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
+        for widget in self.frame_tabla_pendientes.winfo_children():
+            widget.destroy()
+
+        columnas = [
+            ("Fecha", 0, 10),
+            ("Proveedora", 0, 8),
+            ("Codigo", 0, 8),
+            ("Articulo", 4, 80),
+            ("Precio", 1, 12),
+            ("Cliente", 1, 16),
+            ("Tipo pago", 1, 14),
+            ("Validacion", 1, 12),
+        ]
+
+        for indice, (_, peso, _) in enumerate(columnas):
+            self.frame_tabla_pendientes.grid_columnconfigure(indice, weight=peso, uniform="tabla_pendientes")
+
+        if not filas:
+            ctk.CTkLabel(
+                self.frame_tabla_pendientes,
+                text=mensaje_vacio,
+                text_color="#555555",
+                font=FUENTE_SUBTITULO
+            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
+            return
+
+        for columna, (titulo, _, _) in enumerate(columnas):
+            ctk.CTkLabel(
+                self.frame_tabla_pendientes,
+                text=titulo,
+                text_color=COLOR_TEXTO,
+                font=("Arial", 13, "bold"),
+                anchor="w",
+                fg_color="#F2F2F2",
+                height=30
+            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+
+        for fila_indice, fila in enumerate(filas, start=1):
+            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
+            valores = [
+                self._formatear_fecha(fila["fecha_venta"]),
+                str(fila["codigo_proveedora"] or ""),
+                str(fila["codigo_prenda"] or ""),
+                str(fila["articulo"] or ""),
+                self._format_moneda(fila["precio_venta"]),
+                str(fila["cliente"] or ""),
+                str(fila["tipo_pago"] or ""),
+                str(fila["validacion"] or ""),
+            ]
+
+            for columna, valor in enumerate(valores):
+                texto = str(valor)
+                ancho_maximo = columnas[columna][2]
+                if len(texto) > ancho_maximo:
+                    texto = texto[:ancho_maximo - 1] + "."
+                wraplength = 230 if columna == 3 else 0
+                alto = 44 if columna == 3 else 28
+
+                ctk.CTkLabel(
+                    self.frame_tabla_pendientes,
+                    text=texto,
+                    text_color=COLOR_TEXTO,
+                    font=("Arial", 13),
+                    anchor="w",
+                    justify="left",
+                    wraplength=wraplength,
+                    fg_color=fondo,
+                    height=alto
+                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
+
     def _mostrar_detalle_proveedora(self, texto):
+        if not hasattr(self, "textbox_detalle_proveedora"):
+            self._mostrar_tabla_proveedora([], texto)
+            return
+
         self.textbox_detalle_proveedora.configure(state="normal")
         self.textbox_detalle_proveedora.delete("1.0", "end")
         self.textbox_detalle_proveedora.insert("1.0", texto)
         self.textbox_detalle_proveedora.configure(state="disabled")
+
+    def _mostrar_tabla_proveedora(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
+        for widget in self.frame_tabla_proveedora.winfo_children():
+            widget.destroy()
+        for indice in range(12):
+            self.frame_tabla_proveedora.grid_columnconfigure(indice, weight=0, uniform="")
+
+        columnas = [
+            ("Codigo", 0, 8),
+            ("Articulo", 4, 80),
+            ("Marca", 1, 18),
+            ("Talle", 0, 8),
+            ("Color", 3, 60),
+            ("Precio", 1, 12),
+            ("Estado", 1, 12),
+        ]
+
+        for indice, (_, peso, _) in enumerate(columnas):
+            self.frame_tabla_proveedora.grid_columnconfigure(indice, weight=peso, uniform="tabla_proveedora")
+
+        if not filas:
+            ctk.CTkLabel(
+                self.frame_tabla_proveedora,
+                text=mensaje_vacio,
+                text_color="#555555",
+                font=FUENTE_SUBTITULO
+            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
+            return
+
+        for columna, (titulo, _, _) in enumerate(columnas):
+            ctk.CTkLabel(
+                self.frame_tabla_proveedora,
+                text=titulo,
+                text_color=COLOR_TEXTO,
+                font=("Arial", 13, "bold"),
+                anchor="w",
+                fg_color="#F2F2F2",
+                height=30
+            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+
+        for fila_indice, fila in enumerate(filas, start=1):
+            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
+            precio = fila["precio"]
+            precio_texto = self._format_moneda(precio) if isinstance(precio, (int, float)) else str(precio or "")
+            valores = [
+                str(fila["codigo_prenda"] or ""),
+                str(fila["articulo"] or ""),
+                str(fila["marca"] or ""),
+                str(fila["talle"] or ""),
+                str(fila["color"] or ""),
+                precio_texto,
+                str(fila["estado"] or ""),
+            ]
+
+            for columna, valor in enumerate(valores):
+                texto = str(valor)
+                ancho_maximo = columnas[columna][2]
+                if len(texto) > ancho_maximo:
+                    texto = texto[:ancho_maximo - 1] + "."
+                wraplength = 230 if columna == 1 else 170 if columna == 4 else 0
+                alto = 44 if columna in (1, 4) else 28
+
+                ctk.CTkLabel(
+                    self.frame_tabla_proveedora,
+                    text=texto,
+                    text_color=COLOR_TEXTO,
+                    font=("Arial", 13),
+                    anchor="w",
+                    justify="left",
+                    wraplength=wraplength,
+                    fg_color=fondo,
+                    height=alto
+                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
+
+    def _mostrar_tabla_proveedoras(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
+        for widget in self.frame_tabla_proveedora.winfo_children():
+            widget.destroy()
+        for indice in range(12):
+            self.frame_tabla_proveedora.grid_columnconfigure(indice, weight=0, uniform="")
+
+        columnas = [
+            ("Codigo", 0, 10),
+            ("Nombre", 3, 36),
+            ("Telefono", 1, 14),
+            ("Banco", 1, 16),
+            ("Numero cta", 1, 18),
+            ("Titular", 2, 28),
+            ("Alias", 2, 24),
+            ("Estado", 1, 12),
+        ]
+
+        for indice, (_, peso, _) in enumerate(columnas):
+            self.frame_tabla_proveedora.grid_columnconfigure(indice, weight=peso, uniform="tabla_proveedoras")
+
+        if not filas:
+            ctk.CTkLabel(
+                self.frame_tabla_proveedora,
+                text=mensaje_vacio,
+                text_color="#555555",
+                font=FUENTE_SUBTITULO
+            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
+            return
+
+        for columna, (titulo, _, _) in enumerate(columnas):
+            ctk.CTkLabel(
+                self.frame_tabla_proveedora,
+                text=titulo,
+                text_color=COLOR_TEXTO,
+                font=("Arial", 13, "bold"),
+                anchor="w",
+                fg_color="#F2F2F2",
+                height=30
+            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+
+        for fila_indice, fila in enumerate(filas, start=1):
+            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
+            valores = [
+                str(fila["codigo_proveedora"] or ""),
+                str(fila["nombre_proveedora"] or ""),
+                str(fila["telefono"] or ""),
+                str(fila["banco"] or ""),
+                str(fila["numero_cuenta"] or ""),
+                str(fila["titular_cuenta"] or ""),
+                str(fila["alias"] or ""),
+                str(fila["estado"] or ""),
+            ]
+
+            for columna, valor in enumerate(valores):
+                texto = str(valor)
+                ancho_maximo = columnas[columna][2]
+                if len(texto) > ancho_maximo:
+                    texto = texto[:ancho_maximo - 1] + "."
+                wraplength = 220 if columna == 1 else 180 if columna in (5, 6) else 0
+                alto = 44 if columna in (1, 5, 6) else 28
+
+                ctk.CTkLabel(
+                    self.frame_tabla_proveedora,
+                    text=texto,
+                    text_color=COLOR_TEXTO,
+                    font=("Arial", 13),
+                    anchor="w",
+                    justify="left",
+                    wraplength=wraplength,
+                    fg_color=fondo,
+                    height=alto
+                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
 
     def actualizar_filtro_proveedora(self):
         if not hasattr(self, "detalle_proveedora_actual"):
@@ -3396,7 +3853,7 @@ class AppFashionReset(ctk.CTk):
                 if str(fila.get("estado") or "").strip().upper() == "VENDIDO"
             ]
 
-        self._mostrar_detalle_proveedora(self._construir_tabla_proveedora(filas))
+        self._mostrar_tabla_proveedora(filas)
 
     def _construir_tabla_resumen_general(self, filas):
         if not filas:
@@ -3679,10 +4136,87 @@ class AppFashionReset(ctk.CTk):
         return "\n".join(tabla)
 
     def _mostrar_detalle_rendicion(self, texto):
+        if not hasattr(self, "textbox_rendicion"):
+            self._mostrar_tabla_rendicion([], texto)
+            return
+
         self.textbox_rendicion.configure(state="normal")
         self.textbox_rendicion.delete("1.0", "end")
         self.textbox_rendicion.insert("1.0", texto)
         self.textbox_rendicion.configure(state="disabled")
+
+    def _mostrar_tabla_rendicion(self, ventas, mensaje_vacio="Todavía no hay resultados para mostrar."):
+        for widget in self.frame_tabla_rendicion.winfo_children():
+            widget.destroy()
+
+        columnas = [
+            ("Fecha", 0, 10),
+            ("Codigo", 0, 8),
+            ("Articulo", 4, 80),
+            ("Color", 3, 60),
+            ("Precio", 0, 12),
+            ("60% Prov.", 1, 12),
+            ("Cliente", 1, 16),
+            ("Tipo pago", 1, 14),
+            ("Validacion", 1, 12),
+        ]
+
+        for indice, (_, peso, _) in enumerate(columnas):
+            self.frame_tabla_rendicion.grid_columnconfigure(indice, weight=peso, uniform="tabla_rendicion")
+
+        if not ventas:
+            ctk.CTkLabel(
+                self.frame_tabla_rendicion,
+                text=mensaje_vacio,
+                text_color="#555555",
+                font=FUENTE_SUBTITULO
+            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
+            return
+
+        for columna, (titulo, _, _) in enumerate(columnas):
+            ctk.CTkLabel(
+                self.frame_tabla_rendicion,
+                text=titulo,
+                text_color=COLOR_TEXTO,
+                font=("Arial", 13, "bold"),
+                anchor="w",
+                fg_color="#F2F2F2",
+                height=30
+            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+
+        for fila_indice, venta in enumerate(ventas, start=1):
+            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
+            valores = [
+                self._formatear_fecha(venta["fecha_venta"]),
+                str(venta["codigo_prenda"] or ""),
+                str(venta["articulo"] or ""),
+                str(venta["color"] or ""),
+                self._format_moneda(venta["precio_venta"]),
+                self._format_moneda(venta["comision_proveedora"]),
+                str(venta["cliente"] or ""),
+                str(venta["tipo_pago"] or ""),
+                str(venta["validacion"] or ""),
+            ]
+
+            for columna, valor in enumerate(valores):
+                texto = str(valor)
+                ancho_maximo = columnas[columna][2]
+                if len(texto) > ancho_maximo:
+                    texto = texto[:ancho_maximo - 1] + "."
+                wraplength = 230 if columna == 2 else 170 if columna == 3 else 0
+                alto = 44 if columna in (2, 3) else 28
+
+                ctk.CTkLabel(
+                    self.frame_tabla_rendicion,
+                    text=texto,
+                    text_color=COLOR_TEXTO,
+                    font=("Arial", 13),
+                    anchor="w",
+                    justify="left",
+                    wraplength=wraplength,
+                    fg_color=fondo,
+                    height=alto
+                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
 
     def _mostrar_resultado_eliminar_prendas(self, texto):
         self.textbox_resultado_eliminar_prendas.configure(state="normal")
@@ -3697,7 +4231,7 @@ class AppFashionReset(ctk.CTk):
         self.textbox_resultado_reversar_ventas.configure(state="disabled")
 
     def _mostrar_detalle_rendicion_tabla(self, ventas):
-        self._mostrar_detalle_rendicion(self._construir_tabla_rendicion(ventas))
+        self._mostrar_tabla_rendicion(ventas)
 
     def _construir_tabla_rendicion(self, ventas):
         if not ventas:
