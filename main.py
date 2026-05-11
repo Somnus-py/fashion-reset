@@ -22,7 +22,7 @@ CARPETA_BACKUPS = os.path.join(CARPETA_BASE, "backups")
 MAX_BACKUPS = 50
 DIAS_PRENDA_VENCIDA = 60
 MESES_PRENDA_VENCIDA = 2
-PROVEEDORAS_CON_COSTO = {"AYI", "PACI"}
+PROVEEDORAS_CON_COSTO = {"AYI", "PB"}
 
 
 def obtener_ruta_en_base(*partes):

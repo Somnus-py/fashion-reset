@@ -30,6 +30,7 @@ from main import (
     obtener_proveedora_desde_gui,
     obtener_ruta_en_base,
     obtener_todas_las_proveedoras_desde_gui,
+    PROVEEDORAS_CON_COSTO,
     registrar_devolucion_desde_gui,
     reversar_ventas_desde_gui,
     validar_venta_pendiente_por_codigo,
@@ -43,6 +44,7 @@ ctk.set_default_color_theme("blue")  # "blue", "green" o "dark-blue"
 COLOR_FONDO = "white"
 COLOR_TEXTO = "black"
 COLOR_HOVER = "#F2F2F2"
+COLOR_BORDE_TABLA = "#CFCFCF"
 
 FUENTE_TITULO = ("Arial", 28, "bold")
 FUENTE_SUBTITULO = ("Arial", 16)
@@ -369,7 +371,7 @@ class AppFashionReset(ctk.CTk):
         self.frame_tabla_venta.pack(fill="x", padx=20, pady=(0, 10))
 
         encabezados = [
-            "CÓDIGO PRENDA",
+            "CÓDIGO",
             "ARTÍCULO",
             "MARCA",
             "TALLE",
@@ -3538,18 +3540,15 @@ class AppFashionReset(ctk.CTk):
             widget.destroy()
 
         columnas = [
-            ("Codigo", 0, 8),
-            ("Prov.", 0, 8),
+            ("Codigo", 0, 6),
             ("Articulo", 4, 80),
             ("Marca", 1, 18),
             ("Talle", 0, 8),
             ("Color", 3, 60),
             ("Estado", 1, 12),
             ("Ingreso", 0, 10),
-            ("Venta", 0, 10),
-            ("P. Venta", 1, 12),
+            ("Precio", 1, 12),
             ("Cliente", 1, 16),
-            ("Validacion", 1, 12),
         ]
 
         for indice, (_, peso, _) in enumerate(columnas):
@@ -3577,25 +3576,22 @@ class AppFashionReset(ctk.CTk):
 
         for fila_indice, fila in enumerate(filas, start=1):
             fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
-            precio_venta = fila["precio_venta"]
-            precio_venta_texto = (
-                self._format_moneda(precio_venta)
-                if isinstance(precio_venta, (int, float))
-                else str(precio_venta or "")
+            precio = fila["precio_lista"]
+            precio_texto = (
+                self._format_moneda(precio)
+                if isinstance(precio, (int, float))
+                else str(precio or "")
             )
             valores = [
                 str(fila["codigo_prenda"] or ""),
-                str(fila["codigo_proveedora"] or ""),
                 str(fila["articulo"] or ""),
                 str(fila["marca"] or ""),
                 str(fila["talle"] or ""),
                 str(fila["color"] or ""),
                 str(fila["estado"] or ""),
                 self._formatear_fecha(fila["fecha_ingreso"]),
-                self._formatear_fecha(fila["fecha_venta"]),
-                precio_venta_texto,
+                precio_texto,
                 str(fila["cliente"] or ""),
-                str(fila["validacion"] or ""),
             ]
 
             for columna, valor in enumerate(valores):
@@ -3603,8 +3599,8 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 2 else 170 if columna == 5 else 0
-                alto = 44 if columna in (2, 5) else 28
+                wraplength = 230 if columna == 1 else 170 if columna == 4 else 0
+                alto = 44 if columna in (1, 4) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_buscador_prendas,
@@ -4526,7 +4522,7 @@ class AppFashionReset(ctk.CTk):
         self.frame_botones.pack(pady=30, padx=30, fill="both", expand=True)
 
     def _usa_costo_ingreso(self, codigo_proveedora):
-        return codigo_proveedora.strip().upper() in {"AYI", "PACI"}
+        return codigo_proveedora.strip().upper() in PROVEEDORAS_CON_COSTO
 
     def _actualizar_columna_costo_ingreso(self, entry_proveedora):
         if not hasattr(self, "labels_ingreso") or not hasattr(self, "filas_ingreso"):
@@ -4560,28 +4556,76 @@ class AppFashionReset(ctk.CTk):
 
     def agregar_filas_ingreso(self, cantidad=10):
         for _ in range(cantidad):
-            entry_numero = ctk.CTkEntry(self.frame_tabla_ingreso, width=80)
+            entry_numero = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=80,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_numero.grid(row=self.fila_actual_ingreso, column=0, padx=5, pady=4)
 
-            entry_articulo = ctk.CTkEntry(self.frame_tabla_ingreso, width=140)
+            entry_articulo = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=220,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_articulo.grid(row=self.fila_actual_ingreso, column=1, padx=5, pady=4)
 
-            entry_marca = ctk.CTkEntry(self.frame_tabla_ingreso, width=120)
+            entry_marca = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=120,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_marca.grid(row=self.fila_actual_ingreso, column=2, padx=5, pady=4)
 
-            entry_talle = ctk.CTkEntry(self.frame_tabla_ingreso, width=80)
+            entry_talle = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=80,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_talle.grid(row=self.fila_actual_ingreso, column=3, padx=5, pady=4)
 
-            entry_color = ctk.CTkEntry(self.frame_tabla_ingreso, width=100)
+            entry_color = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=220,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_color.grid(row=self.fila_actual_ingreso, column=4, padx=5, pady=4)
 
-            entry_precio = ctk.CTkEntry(self.frame_tabla_ingreso, width=100)
+            entry_precio = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=100,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_precio.grid(row=self.fila_actual_ingreso, column=5, padx=5, pady=4)
 
-            entry_costo = ctk.CTkEntry(self.frame_tabla_ingreso, width=100)
+            entry_costo = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=100,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_costo.grid(row=self.fila_actual_ingreso, column=6, padx=5, pady=4)
 
-            entry_obs = ctk.CTkEntry(self.frame_tabla_ingreso, width=160)
+            entry_obs = ctk.CTkEntry(
+                self.frame_tabla_ingreso,
+                width=160,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_obs.grid(row=self.fila_actual_ingreso, column=7, padx=5, pady=4)
 
             fila_indice = len(self.filas_ingreso)
@@ -4614,22 +4658,63 @@ class AppFashionReset(ctk.CTk):
 
     def agregar_filas_venta(self, cantidad=10):
         for _ in range(cantidad):
-            entry_codigo = ctk.CTkEntry(self.frame_tabla_venta, width=60)
+            entry_codigo = ctk.CTkEntry(
+                self.frame_tabla_venta,
+                width=60,
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_codigo.grid(row=self.fila_actual_venta, column=0, padx=5, pady=4)
 
-            entry_articulo = ctk.CTkEntry(self.frame_tabla_venta, width=75, state="disabled")
+            entry_articulo = ctk.CTkEntry(
+                self.frame_tabla_venta,
+                width=220,
+                state="disabled",
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_articulo.grid(row=self.fila_actual_venta, column=1, padx=3, pady=4)
 
-            entry_marca = ctk.CTkEntry(self.frame_tabla_venta, width=70, state="disabled")
+            entry_marca = ctk.CTkEntry(
+                self.frame_tabla_venta,
+                width=70,
+                state="disabled",
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_marca.grid(row=self.fila_actual_venta, column=2, padx=3, pady=4)
 
-            entry_talle = ctk.CTkEntry(self.frame_tabla_venta, width=55, state="disabled")
+            entry_talle = ctk.CTkEntry(
+                self.frame_tabla_venta,
+                width=55,
+                state="disabled",
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_talle.grid(row=self.fila_actual_venta, column=3, padx=3, pady=4)
 
-            entry_color = ctk.CTkEntry(self.frame_tabla_venta, width=55, state="disabled")
+            entry_color = ctk.CTkEntry(
+                self.frame_tabla_venta,
+                width=160,
+                state="disabled",
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_color.grid(row=self.fila_actual_venta, column=4, padx=3, pady=4)
 
-            entry_precio = ctk.CTkEntry(self.frame_tabla_venta, width=70, state="disabled")
+            entry_precio = ctk.CTkEntry(
+                self.frame_tabla_venta,
+                width=70,
+                state="disabled",
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
+            )
             entry_precio.grid(row=self.fila_actual_venta, column=5, padx=3, pady=4)
             entry_precio.bind("<KeyRelease>", lambda event, e=entry_precio: self._actualizar_total_venta())
             entry_precio.bind("<FocusOut>", lambda event, e=entry_precio: self._formatear_precio_entry(e))
@@ -4638,7 +4723,10 @@ class AppFashionReset(ctk.CTk):
                 self.frame_tabla_venta,
                 width=85,
                 placeholder_text="",
-                placeholder_text_color="#8A8A8A"
+                placeholder_text_color="#8A8A8A",
+                corner_radius=0,
+                border_width=1,
+                border_color=COLOR_BORDE_TABLA
             )
             entry_obs_venta.grid(row=self.fila_actual_venta, column=8, padx=3, pady=4)
 
@@ -4649,6 +4737,7 @@ class AppFashionReset(ctk.CTk):
                 values=self.tipo_pago_opciones,
                 variable=tipo_pago_var,
                 width=110,
+                corner_radius=0,
                 fg_color=COLOR_FONDO,
                 button_color=COLOR_FONDO,
                 button_hover_color=COLOR_HOVER,
@@ -4668,6 +4757,7 @@ class AppFashionReset(ctk.CTk):
                 values=self.validacion_opciones,
                 variable=validacion_var,
                 width=65,
+                corner_radius=0,
                 fg_color=COLOR_FONDO,
                 button_color=COLOR_FONDO,
                 button_hover_color=COLOR_HOVER,
