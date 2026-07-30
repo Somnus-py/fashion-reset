@@ -3549,6 +3549,8 @@ class AppFashionReset(ctk.CTk):
             ("Ingreso", 0, 10),
             ("Precio", 1, 12),
             ("Cliente", 1, 16),
+            ("Venta", 0, 10),
+            ("Obs venta", 3, 70),
         ]
 
         for indice, (_, peso, _) in enumerate(columnas):
@@ -3592,6 +3594,8 @@ class AppFashionReset(ctk.CTk):
                 self._formatear_fecha(fila["fecha_ingreso"]),
                 precio_texto,
                 str(fila["cliente"] or ""),
+                self._formatear_fecha(fila["fecha_venta"]),
+                str(fila["obs_venta"] or ""),
             ]
 
             for columna, valor in enumerate(valores):
@@ -3599,8 +3603,8 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 1 else 170 if columna == 4 else 0
-                alto = 44 if columna in (1, 4) else 28
+                wraplength = 230 if columna == 1 else 170 if columna == 4 else 220 if columna == 10 else 0
+                alto = 44 if columna in (1, 4, 10) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_buscador_prendas,
