@@ -3159,9 +3159,9 @@ class AppFashionReset(ctk.CTk):
             ("Proveedora", 0, 8),
             ("Codigo", 0, 8),
             ("Articulo", 4, 80),
-            ("Color", 3, 60),
+            ("Color", 2, 60),
             ("Precio", 0, 12),
-            ("Cliente", 1, 16),
+            ("Cliente", 4, 40),
             ("Tipo pago", 1, 14),
             ("Obs venta", 3, 70),
         ]
@@ -3208,8 +3208,8 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 3 else 170 if columna == 4 else 220 if columna == 8 else 0
-                alto = 44 if columna in (3, 4, 8) else 28
+                wraplength = 230 if columna in (3, 6) else 170 if columna == 4 else 220 if columna == 8 else 0
+                alto = 44 if columna in (3, 4, 6, 8) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_resumen_ventas,
