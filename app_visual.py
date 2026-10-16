@@ -16,7 +16,6 @@ from main import (
     calcular_resumen_general,
     calcular_resumen_ventas,
     calcular_rendicion_proveedora,
-    calcular_ventas_pendientes,
     crear_proveedora_desde_gui,
     exportar_lote_remarque_excel,
     exportar_prendas_disponibles_proveedora_excel,
@@ -30,11 +29,11 @@ from main import (
     obtener_lote_decision_remarque_desde_gui,
     obtener_proveedora_desde_gui,
     obtener_ruta_en_base,
+    quitar_columna_validacion,
     obtener_todas_las_proveedoras_desde_gui,
     PROVEEDORAS_CON_COSTO,
     registrar_devolucion_desde_gui,
     reversar_ventas_desde_gui,
-    validar_venta_pendiente_por_codigo,
 )
 
 # CONFIGURACION GENERAL
@@ -81,7 +80,6 @@ class AppFashionReset(ctk.CTk):
         self.frame_resumen_general = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_resumen_ventas = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_buscador_prendas = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
-        self.frame_pendientes_validacion = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_proveedoras = ctk.CTkFrame(self, fg_color=COLOR_FONDO)
         self.frame_editar = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
         self.frame_devolucion = ctk.CTkScrollableFrame(self, fg_color=COLOR_FONDO)
@@ -145,7 +143,6 @@ class AppFashionReset(ctk.CTk):
         self.frame_resumen_general.pack_forget()
         self.frame_resumen_ventas.pack_forget()
         self.frame_buscador_prendas.pack_forget()
-        self.frame_pendientes_validacion.pack_forget()
         self.frame_proveedoras.pack_forget()
         self.frame_editar.pack_forget()
         self.frame_devolucion.pack_forget()
@@ -322,7 +319,6 @@ class AppFashionReset(ctk.CTk):
             "DESCUENTO A PROVEEDORA",
             "OTRO"
         ]
-        self.validacion_opciones = ["PENDIENTE", "PAGADO"]
 
         frame_acciones = ctk.CTkFrame(self.frame_venta, fg_color=COLOR_FONDO)
         frame_acciones.pack(fill="x", padx=20, pady=(0, 8))
@@ -379,7 +375,6 @@ class AppFashionReset(ctk.CTk):
             "COLOR",
             "PRECIO VENTA",
             "TIPO PAGO",
-            "VALIDACIÓN",
             "OBS VENTA"
         ]
         for col, encabezado in enumerate(encabezados):
@@ -474,21 +469,6 @@ class AppFashionReset(ctk.CTk):
             command=self.abrir_buscador_prendas
         )
         boton_buscador.pack(anchor="w", pady=(0, 10))
-
-        boton_pendientes = ctk.CTkButton(
-            frame_contenido,
-            text="Ventas pendientes de validación",
-            font=FUENTE_BOTON,
-            width=280,
-            height=42,
-            fg_color=COLOR_FONDO,
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=1,
-            border_color=COLOR_TEXTO,
-            command=self.abrir_ventana_pendientes_validacion
-        )
-        boton_pendientes.pack(anchor="w", pady=(0, 10))
 
     def abrir_ventana_proveedoras(self):
         self._ocultar_frames_secundarios()
@@ -1114,22 +1094,6 @@ class AppFashionReset(ctk.CTk):
         )
         self.editar_venta_tipo_pago.grid(row=5, column=0, padx=10, pady=(0, 8), sticky="w")
 
-        ctk.CTkLabel(frame_formulario, text="Validación", text_color=COLOR_TEXTO).grid(
-            row=4, column=1, padx=10, pady=(6, 2), sticky="w"
-        )
-        self.editar_venta_validacion = ctk.CTkOptionMenu(
-            frame_formulario,
-            values=["PENDIENTE", "PAGADO"],
-            width=220,
-            fg_color=COLOR_FONDO,
-            button_color=COLOR_FONDO,
-            button_hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            dropdown_fg_color=COLOR_FONDO,
-            dropdown_text_color=COLOR_TEXTO
-        )
-        self.editar_venta_validacion.grid(row=5, column=1, padx=10, pady=(0, 8), sticky="w")
-
         self.label_editar_venta_info = ctk.CTkLabel(
             self.frame_editar,
             text="Todavía no hay una venta cargada para editar.",
@@ -1561,23 +1525,17 @@ class AppFashionReset(ctk.CTk):
 
         self.resumen_ventas_vars = {
             "cantidad_ventas": ctk.StringVar(value="-"),
-            "cantidad_pagadas": ctk.StringVar(value="-"),
-            "cantidad_pendientes": ctk.StringVar(value="-"),
             "total_vendido": ctk.StringVar(value="-"),
             "comision_proveedoras": ctk.StringVar(value="-"),
-            "total_pendiente": ctk.StringVar(value="-"),
             "total_descuentos": ctk.StringVar(value="-"),
             "ganancia": ctk.StringVar(value="-"),
         }
 
         labels_resumen = [
             ("Ventas", "cantidad_ventas"),
-            ("Pagadas", "cantidad_pagadas"),
-            ("Pendientes", "cantidad_pendientes"),
             ("Total vendido", "total_vendido"),
             ("A pagar / costo", "comision_proveedoras"),
             ("Descuentos a proveedoras", "total_descuentos"),
-            ("Total pendiente", "total_pendiente"),
             ("GANANCIA", "ganancia"),
         ]
 
@@ -1691,115 +1649,6 @@ class AppFashionReset(ctk.CTk):
         )
         self.frame_tabla_buscador_prendas.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         self._mostrar_tabla_buscador_prendas([])
-
-    def abrir_ventana_pendientes_validacion(self):
-        self._ocultar_frames_secundarios()
-        self.frame_botones.pack_forget()
-        self.frame_pendientes_validacion.pack(pady=(5, 10), padx=30, fill="both", expand=True)
-
-        for widget in self.frame_pendientes_validacion.winfo_children():
-            widget.destroy()
-
-        self._crear_encabezado(
-            self.frame_pendientes_validacion,
-            "VENTAS PENDIENTES DE VALIDACIÓN",
-            self.abrir_ventana_consultas
-        )
-
-        frame_acciones = ctk.CTkFrame(self.frame_pendientes_validacion, fg_color=COLOR_FONDO)
-        frame_acciones.pack(fill="x", padx=20, pady=(6, 4))
-        frame_acciones.grid_columnconfigure(5, weight=1)
-
-        boton_buscar = ctk.CTkButton(
-            frame_acciones,
-            text="Buscar pendientes",
-            font=FUENTE_BOTON,
-            fg_color=COLOR_FONDO,
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=1,
-            border_color=COLOR_TEXTO,
-            command=self.buscar_ventas_pendientes
-        )
-        boton_buscar.grid(row=0, column=0, padx=(0, 10), pady=4, sticky="w")
-
-        ctk.CTkLabel(
-            frame_acciones,
-            text="Código prenda",
-            text_color=COLOR_TEXTO
-        ).grid(row=0, column=1, padx=(10, 8), pady=4, sticky="w")
-
-        self.entry_validar_pendiente = ctk.CTkEntry(frame_acciones, width=120)
-        self.entry_validar_pendiente.grid(row=0, column=2, padx=(0, 10), pady=4, sticky="w")
-
-        boton_validar = ctk.CTkButton(
-            frame_acciones,
-            text="Validar venta",
-            font=FUENTE_BOTON,
-            fg_color=COLOR_FONDO,
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=1,
-            border_color=COLOR_TEXTO,
-            command=self.validar_venta_pendiente_desde_pantalla
-        )
-        boton_validar.grid(row=0, column=3, padx=(0, 14), pady=4, sticky="w")
-
-        self.label_pendientes_estado = ctk.CTkLabel(
-            frame_acciones,
-            text="",
-            text_color="#555555",
-            font=FUENTE_SUBTITULO
-        )
-        self.label_pendientes_estado.grid(row=0, column=4, columnspan=2, padx=(0, 0), pady=4, sticky="ew")
-
-        frame_resumen = ctk.CTkFrame(self.frame_pendientes_validacion, fg_color=COLOR_FONDO)
-        frame_resumen.pack(fill="x", padx=20, pady=(0, 4))
-        for columna in range(2):
-            frame_resumen.grid_columnconfigure(columna, weight=1, uniform="pendientes_resumen")
-
-        self.pendientes_vars = {
-            "cantidad_pendientes": ctk.StringVar(value="-"),
-            "total_importe_pendiente": ctk.StringVar(value="-"),
-        }
-
-        labels_resumen = [
-            ("Cantidad pendientes", "cantidad_pendientes"),
-            ("Total importe pendiente", "total_importe_pendiente"),
-        ]
-        for columna, (texto, clave) in enumerate(labels_resumen):
-            frame_indicador = ctk.CTkFrame(frame_resumen, fg_color=COLOR_FONDO)
-            frame_indicador.grid(row=0, column=columna, padx=(0, 18), pady=3, sticky="ew")
-            ctk.CTkLabel(
-                frame_indicador,
-                text=f"{texto}:",
-                text_color=COLOR_TEXTO,
-                font=FUENTE_SUBTITULO
-            ).pack(side="left", padx=(0, 6))
-            ctk.CTkLabel(
-                frame_indicador,
-                textvariable=self.pendientes_vars[clave],
-                text_color=COLOR_TEXTO,
-                font=FUENTE_SUBTITULO
-            ).pack(side="left")
-
-        label_detalle = ctk.CTkLabel(
-            self.frame_pendientes_validacion,
-            text="Detalle de ventas pendientes",
-            text_color=COLOR_TEXTO,
-            font=FUENTE_FORMULARIO_TITULO
-        )
-        label_detalle.pack(anchor="w", padx=20, pady=(4, 4))
-
-        self.frame_tabla_pendientes = ctk.CTkScrollableFrame(
-            self.frame_pendientes_validacion,
-            height=360,
-            border_width=1,
-            border_color=COLOR_TEXTO,
-            fg_color=COLOR_FONDO
-        )
-        self.frame_tabla_pendientes.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self._mostrar_tabla_pendientes([])
 
     def abrir_formulario_proveedora(self):
         self._ocultar_frames_secundarios()
@@ -2160,8 +2009,7 @@ class AppFashionReset(ctk.CTk):
             codigo_prenda = fila[0].get().strip()
             precio_texto = fila[5].get().strip()
             tipo_pago = fila[6].get().strip().upper()
-            validacion = fila[7].get().strip().upper()
-            obs_venta = fila[8].get().strip()
+            obs_venta = fila[7].get().strip()
 
             if not codigo_prenda:
                 if not any([
@@ -2170,7 +2018,7 @@ class AppFashionReset(ctk.CTk):
                     fila[3].get().strip(),
                     fila[4].get().strip(),
                     precio_texto,
-                    fila[8].get().strip()
+                    fila[7].get().strip()
                 ]):
                     ignoradas += 1
                     continue
@@ -2198,7 +2046,7 @@ class AppFashionReset(ctk.CTk):
                     "DESCUENTO A PROVEEDORA (código de la proveedora)."
                 )
                 try:
-                    fila[8].configure(border_color="red")
+                    fila[7].configure(border_color="red")
                 except Exception:
                     pass
                 continue
@@ -2209,7 +2057,6 @@ class AppFashionReset(ctk.CTk):
                 fecha_venta,
                 cliente,
                 tipo_pago,
-                validacion,
                 codigo_prenda,
                 fila[1].get().strip(),
                 fila[2].get().strip(),
@@ -2236,8 +2083,8 @@ class AppFashionReset(ctk.CTk):
                 fila[5].delete(0, "end")
                 fila[5].configure(state="disabled")
                 fila[6].set("EFECTIVO")
-                fila[8].delete(0, "end")
-                self._actualizar_tipo_pago_venta("EFECTIVO", fila[8], fila[7])
+                fila[7].delete(0, "end")
+                self._actualizar_tipo_pago_venta("EFECTIVO", fila[7])
             else:
                 errores.append(f"Fila {indice}: {mensaje}")
                 fila[0].configure(border_color="red")
@@ -2378,11 +2225,8 @@ class AppFashionReset(ctk.CTk):
             text_color="#2E5E2E"
         )
         self.resumen_ventas_vars["cantidad_ventas"].set(str(datos["cantidad_ventas"]))
-        self.resumen_ventas_vars["cantidad_pagadas"].set(str(datos["cantidad_pagadas"]))
-        self.resumen_ventas_vars["cantidad_pendientes"].set(str(datos["cantidad_pendientes"]))
         self.resumen_ventas_vars["total_vendido"].set(self._format_moneda(datos["total_vendido"]))
         self.resumen_ventas_vars["comision_proveedoras"].set(self._format_moneda(datos["comision_proveedoras"]))
-        self.resumen_ventas_vars["total_pendiente"].set(self._format_moneda(datos["total_pendiente"]))
         self.resumen_ventas_vars["total_descuentos"].set(self._format_moneda(datos["total_descuentos"]))
         self.resumen_ventas_vars["ganancia"].set(self._format_moneda(datos["ganancia"]))
         self.ventas_resumen_actual = datos["ventas"]
@@ -2450,25 +2294,6 @@ class AppFashionReset(ctk.CTk):
         self.label_buscador_estado.configure(text=texto, text_color="#2E5E2E")
         self._mostrar_tabla_buscador_prendas(filas, f"No hay prendas {filtro.lower()} en esta busqueda.")
 
-    def buscar_ventas_pendientes(self):
-        resultado, datos = calcular_ventas_pendientes()
-
-        if not resultado:
-            self.label_pendientes_estado.configure(text=datos, text_color="#B00020")
-            self._limpiar_pendientes_validacion()
-            self._mostrar_tabla_pendientes([], "No se encontraron resultados para mostrar.")
-            return
-
-        self.label_pendientes_estado.configure(
-            text="Ventas pendientes cargadas correctamente.",
-            text_color="#2E5E2E"
-        )
-        self.pendientes_vars["cantidad_pendientes"].set(str(datos["cantidad_pendientes"]))
-        self.pendientes_vars["total_importe_pendiente"].set(
-            self._format_moneda(datos["total_importe_pendiente"])
-        )
-        self._mostrar_tabla_pendientes(datos["ventas_pendientes"])
-
     def guardar_proveedora_desde_pantalla(self):
         resultado, datos = crear_proveedora_desde_gui(
             self.proveedora_entries["codigo"].get().strip(),
@@ -2511,7 +2336,6 @@ class AppFashionReset(ctk.CTk):
         self.editar_venta_entries["obs_venta"].delete(0, "end")
         self.editar_venta_entries["obs_venta"].insert(0, datos["obs_venta"])
         self.editar_venta_tipo_pago.set(datos["tipo_pago"] or "EFECTIVO")
-        self.editar_venta_validacion.set(datos["validacion"] or "PENDIENTE")
         self.label_estado_editar_venta.configure(
             text=f"Venta {datos['codigo_prenda']} cargada para edición.",
             text_color="#2E5E2E"
@@ -2532,7 +2356,6 @@ class AppFashionReset(ctk.CTk):
             self.editar_venta_entries["fecha_venta"].get().strip(),
             self.editar_venta_entries["cliente"].get().strip(),
             self.editar_venta_tipo_pago.get().strip(),
-            self.editar_venta_validacion.get().strip(),
             self.editar_venta_entries["precio_venta"].get().strip(),
             self.editar_venta_entries["obs_venta"].get().strip(),
         )
@@ -2550,7 +2373,6 @@ class AppFashionReset(ctk.CTk):
             f"Precio venta: {self.editar_venta_entries['precio_venta'].get().strip()}",
             f"Cliente: {self.editar_venta_entries['cliente'].get().strip()}",
             f"Tipo pago: {self.editar_venta_tipo_pago.get().strip()}",
-            f"Validación: {self.editar_venta_validacion.get().strip()}",
             f"Obs venta: {self.editar_venta_entries['obs_venta'].get().strip() or '-'}",
         ])
         messagebox.showinfo("Venta editada", f"{mensaje}\n\n{resumen_actualizado}")
@@ -3277,18 +3099,6 @@ class AppFashionReset(ctk.CTk):
         self._mostrar_tabla_proveedoras(datos)
 
 
-    def validar_venta_pendiente_desde_pantalla(self):
-        codigo_prenda = self.entry_validar_pendiente.get().strip()
-        resultado, mensaje = validar_venta_pendiente_por_codigo(codigo_prenda)
-
-        if not resultado:
-            self.label_pendientes_estado.configure(text=mensaje, text_color="#B00020")
-            return
-
-        self.entry_validar_pendiente.delete(0, "end")
-        self.label_pendientes_estado.configure(text=mensaje, text_color="#2E5E2E")
-        self.buscar_ventas_pendientes()
-
     def buscar_rendicion(self):
         resultado, datos = calcular_rendicion_proveedora(
             self.entry_rendicion_mes.get().strip(),
@@ -3394,10 +3204,6 @@ class AppFashionReset(ctk.CTk):
         for variable in self.resumen_ventas_vars.values():
             variable.set("-")
 
-    def _limpiar_pendientes_validacion(self):
-        for variable in self.pendientes_vars.values():
-            variable.set("-")
-
     def _limpiar_datos_proveedora(self):
         for variable in self.datos_proveedora_vars.values():
             variable.set("-")
@@ -3413,8 +3219,6 @@ class AppFashionReset(ctk.CTk):
             entry.delete(0, "end")
         if hasattr(self, "editar_venta_tipo_pago"):
             self.editar_venta_tipo_pago.set("EFECTIVO")
-        if hasattr(self, "editar_venta_validacion"):
-            self.editar_venta_validacion.set("PENDIENTE")
         if hasattr(self, "label_editar_venta_info"):
             self.label_editar_venta_info.configure(
                 text="Todavía no hay una venta cargada para editar.",
@@ -3561,7 +3365,6 @@ class AppFashionReset(ctk.CTk):
             ("Precio", 0, 12),
             ("Cliente", 1, 16),
             ("Tipo pago", 1, 14),
-            ("Validacion", 1, 12),
             ("Obs venta", 3, 70),
         ]
 
@@ -3599,7 +3402,6 @@ class AppFashionReset(ctk.CTk):
                 self._format_moneda(fila["precio_venta"]),
                 str(fila["cliente"] or ""),
                 str(fila["tipo_pago"] or ""),
-                str(fila["validacion"] or ""),
                 str(fila["obs_venta"] or ""),
             ]
 
@@ -3608,8 +3410,8 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 3 else 170 if columna == 4 else 220 if columna == 9 else 0
-                alto = 44 if columna in (3, 4, 9) else 28
+                wraplength = 230 if columna == 3 else 170 if columna == 4 else 220 if columna == 8 else 0
+                alto = 44 if columna in (3, 4, 8) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_resumen_ventas,
@@ -3633,16 +3435,6 @@ class AppFashionReset(ctk.CTk):
         self.textbox_buscador_prendas.insert("1.0", texto)
         self.textbox_buscador_prendas.configure(state="disabled")
 
-    def _mostrar_ventas_pendientes(self, texto):
-        if not hasattr(self, "textbox_pendientes"):
-            self._mostrar_tabla_pendientes([], texto)
-            return
-
-        self.textbox_pendientes.configure(state="normal")
-        self.textbox_pendientes.delete("1.0", "end")
-        self.textbox_pendientes.insert("1.0", texto)
-        self.textbox_pendientes.configure(state="disabled")
-
     def _mostrar_tabla_buscador_prendas(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
         for widget in self.frame_tabla_buscador_prendas.winfo_children():
             widget.destroy()
@@ -3652,11 +3444,11 @@ class AppFashionReset(ctk.CTk):
             ("Articulo", 4, 80),
             ("Marca", 1, 18),
             ("Talle", 0, 8),
-            ("Color", 3, 60),
+            ("Color", 2, 60),
             ("Estado", 1, 12),
             ("Ingreso", 0, 10),
             ("Precio", 1, 12),
-            ("Cliente", 2, 40),
+            ("Cliente", 4, 40),
             ("Venta", 0, 10),
             ("Obs venta", 3, 70),
         ]
@@ -3711,82 +3503,11 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 1 else 170 if columna in (4, 8) else 220 if columna == 10 else 0
+                wraplength = 230 if columna in (1, 8) else 170 if columna == 4 else 220 if columna == 10 else 0
                 alto = 44 if columna in (1, 4, 8, 10) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_buscador_prendas,
-                    text=texto,
-                    text_color=COLOR_TEXTO,
-                    font=("Arial", 13),
-                    anchor="w",
-                    justify="left",
-                    wraplength=wraplength,
-                    fg_color=fondo,
-                    height=alto
-                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
-
-    def _mostrar_tabla_pendientes(self, filas, mensaje_vacio="Todavía no hay resultados para mostrar."):
-        for widget in self.frame_tabla_pendientes.winfo_children():
-            widget.destroy()
-
-        columnas = [
-            ("Fecha", 0, 10),
-            ("Proveedora", 0, 8),
-            ("Codigo", 0, 8),
-            ("Articulo", 4, 80),
-            ("Precio", 1, 12),
-            ("Cliente", 1, 16),
-            ("Tipo pago", 1, 14),
-            ("Validacion", 1, 12),
-        ]
-
-        for indice, (_, peso, _) in enumerate(columnas):
-            self.frame_tabla_pendientes.grid_columnconfigure(indice, weight=peso, uniform="tabla_pendientes")
-
-        if not filas:
-            ctk.CTkLabel(
-                self.frame_tabla_pendientes,
-                text=mensaje_vacio,
-                text_color="#555555",
-                font=FUENTE_SUBTITULO
-            ).grid(row=0, column=0, columnspan=len(columnas), padx=12, pady=18, sticky="w")
-            return
-
-        for columna, (titulo, _, _) in enumerate(columnas):
-            ctk.CTkLabel(
-                self.frame_tabla_pendientes,
-                text=titulo,
-                text_color=COLOR_TEXTO,
-                font=("Arial", 13, "bold"),
-                anchor="w",
-                fg_color="#F2F2F2",
-                height=30
-            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
-
-        for fila_indice, fila in enumerate(filas, start=1):
-            fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
-            valores = [
-                self._formatear_fecha(fila["fecha_venta"]),
-                str(fila["codigo_proveedora"] or ""),
-                str(fila["codigo_prenda"] or ""),
-                str(fila["articulo"] or ""),
-                self._format_moneda(fila["precio_venta"]),
-                str(fila["cliente"] or ""),
-                str(fila["tipo_pago"] or ""),
-                str(fila["validacion"] or ""),
-            ]
-
-            for columna, valor in enumerate(valores):
-                texto = str(valor)
-                ancho_maximo = columnas[columna][2]
-                if len(texto) > ancho_maximo:
-                    texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 3 else 0
-                alto = 44 if columna == 3 else 28
-
-                ctk.CTkLabel(
-                    self.frame_tabla_pendientes,
                     text=texto,
                     text_color=COLOR_TEXTO,
                     font=("Arial", 13),
@@ -4012,161 +3733,6 @@ class AppFashionReset(ctk.CTk):
 
         return "\n".join(tabla)
 
-    def _construir_tabla_resumen_ventas(self, filas):
-        if not filas:
-            return "Todavía no hay resultados para mostrar."
-
-        columnas = [
-            ("FECHA", 12),
-            ("PROVEEDORA", 12),
-            ("CODIGO", 12),
-            ("ARTICULO", 18),
-            ("COLOR", 12),
-            ("PRECIO", 12),
-            ("CLIENTE", 16),
-            ("TIPO PAGO", 18),
-            ("VALIDACION", 12),
-        ]
-
-        encabezado = " | ".join(titulo.ljust(ancho) for titulo, ancho in columnas)
-        separador = "-+-".join("-" * ancho for _, ancho in columnas)
-        tabla = [encabezado, separador]
-
-        for fila in filas:
-            valores = [
-                self._formatear_fecha(fila["fecha_venta"]),
-                str(fila["codigo_proveedora"] or ""),
-                str(fila["codigo_prenda"] or ""),
-                str(fila["articulo"] or ""),
-                str(fila["color"] or ""),
-                self._format_moneda(fila["precio_venta"]),
-                str(fila["cliente"] or ""),
-                str(fila["tipo_pago"] or ""),
-                str(fila["validacion"] or ""),
-            ]
-
-            celdas = []
-            for indice, valor in enumerate(valores):
-                ancho = columnas[indice][1]
-                texto = str(valor)
-                if len(texto) > ancho:
-                    texto = texto[: ancho - 1] + "."
-                celdas.append(texto.ljust(ancho))
-
-            tabla.append(" | ".join(celdas))
-
-        return "\n".join(tabla)
-
-    def _construir_tabla_buscador_prendas(self, filas):
-        if not filas:
-            return "Todavía no hay resultados para mostrar."
-
-        columnas = [
-            ("CODIGO", 12),
-            ("PROV", 8),
-            ("ARTICULO", 16),
-            ("MARCA", 12),
-            ("TALLE", 8),
-            ("COLOR", 10),
-            ("ESTADO", 11),
-            ("INGRESO", 10),
-            ("VENTA", 10),
-            ("P.VENTA", 12),
-            ("CLIENTE", 14),
-            ("VALIDACION", 10),
-        ]
-
-        encabezado = " | ".join(titulo.ljust(ancho) for titulo, ancho in columnas)
-        separador = "-+-".join("-" * ancho for _, ancho in columnas)
-        tabla = [encabezado, separador]
-
-        for fila in filas:
-            precio_venta = fila["precio_venta"]
-            precio_venta_texto = (
-                self._format_moneda(precio_venta)
-                if isinstance(precio_venta, (int, float))
-                else str(precio_venta or "")
-            )
-            valores = [
-                str(fila["codigo_prenda"] or ""),
-                str(fila["codigo_proveedora"] or ""),
-                str(fila["articulo"] or ""),
-                str(fila["marca"] or ""),
-                str(fila["talle"] or ""),
-                str(fila["color"] or ""),
-                str(fila["estado"] or ""),
-                self._formatear_fecha(fila["fecha_ingreso"]),
-                self._formatear_fecha(fila["fecha_venta"]),
-                precio_venta_texto,
-                str(fila["cliente"] or ""),
-                str(fila["validacion"] or ""),
-            ]
-
-            celdas = []
-            for indice, valor in enumerate(valores):
-                ancho = columnas[indice][1]
-                texto = str(valor)
-                if len(texto) > ancho:
-                    texto = texto[: ancho - 1] + "."
-                celdas.append(texto.ljust(ancho))
-
-            tabla.append(" | ".join(celdas))
-
-            obs = []
-            if fila["tipo_pago"]:
-                obs.append(f"Tipo pago: {fila['tipo_pago']}")
-            if fila["obs_ingreso"]:
-                obs.append(f"Obs ingreso: {fila['obs_ingreso']}")
-            if fila["obs_venta"]:
-                obs.append(f"Obs venta: {fila['obs_venta']}")
-            if obs:
-                tabla.append("  " + " | ".join(obs))
-
-        return "\n".join(tabla)
-
-    def _construir_tabla_pendientes(self, filas):
-        if not filas:
-            return "Todavía no hay resultados para mostrar."
-
-        columnas = [
-            ("FECHA", 12),
-            ("PROVEEDORA", 12),
-            ("CODIGO", 12),
-            ("ARTICULO", 18),
-            ("PRECIO", 12),
-            ("CLIENTE", 18),
-            ("TIPO PAGO", 18),
-            ("VALIDACION", 12),
-        ]
-
-        encabezado = " | ".join(titulo.ljust(ancho) for titulo, ancho in columnas)
-        separador = "-+-".join("-" * ancho for _, ancho in columnas)
-        tabla = [encabezado, separador]
-
-        for fila in filas:
-            valores = [
-                self._formatear_fecha(fila["fecha_venta"]),
-                str(fila["codigo_proveedora"] or ""),
-                str(fila["codigo_prenda"] or ""),
-                str(fila["articulo"] or ""),
-                self._format_moneda(fila["precio_venta"]),
-                str(fila["cliente"] or ""),
-                str(fila["tipo_pago"] or ""),
-                str(fila["validacion"] or ""),
-            ]
-
-            celdas = []
-            for indice, valor in enumerate(valores):
-                ancho = columnas[indice][1]
-                texto = str(valor)
-                if len(texto) > ancho:
-                    texto = texto[: ancho - 1] + "."
-                celdas.append(texto.ljust(ancho))
-
-            tabla.append(" | ".join(celdas))
-
-        return "\n".join(tabla)
-
     def _construir_tabla_proveedora(self, filas):
         if not filas:
             return "Todavía no hay resultados para mostrar."
@@ -4278,7 +3844,6 @@ class AppFashionReset(ctk.CTk):
             ("Ganancia", 1, 12),
             ("Cliente", 1, 16),
             ("Tipo pago", 1, 14),
-            ("Validacion", 1, 12),
         ]
         if usa_costo:
             columnas.insert(5, ("Costo", 1, 12))
@@ -4318,7 +3883,6 @@ class AppFashionReset(ctk.CTk):
                 self._format_moneda(venta.get("comision_fashion_reset", 0)),
                 str(venta["cliente"] or ""),
                 str(venta["tipo_pago"] or ""),
-                str(venta["validacion"] or ""),
             ]
             if usa_costo:
                 costo = venta.get("costo", "")
@@ -4358,59 +3922,6 @@ class AppFashionReset(ctk.CTk):
 
     def _mostrar_detalle_rendicion_tabla(self, ventas):
         self._mostrar_tabla_rendicion(ventas)
-
-    def _construir_tabla_rendicion(self, ventas):
-        if not ventas:
-            return "Todavía no hay resultados para mostrar."
-
-        usa_costo = any(str(venta.get("tipo_rendicion") or "").upper() == "COSTO" for venta in ventas)
-        columnas = [
-            ("FECHA", 12),
-            ("CODIGO", 12),
-            ("ARTICULO", 18),
-            ("COLOR", 12),
-            ("PRECIO", 12),
-            ("A PAGAR", 12),
-            ("GANANCIA", 12),
-            ("CLIENTE", 18),
-            ("TIPO PAGO", 22),
-            ("VALIDACION", 12),
-        ]
-        if usa_costo:
-            columnas.insert(5, ("COSTO", 12))
-
-        encabezado = " | ".join(titulo.ljust(ancho) for titulo, ancho in columnas)
-        separador = "-+-".join("-" * ancho for _, ancho in columnas)
-        filas = [encabezado, separador]
-
-        for venta in ventas:
-            valores = [
-                self._formatear_fecha(venta["fecha_venta"]),
-                str(venta["codigo_prenda"] or ""),
-                str(venta["articulo"] or ""),
-                str(venta["color"] or ""),
-                self._format_moneda(venta["precio_venta"]),
-                self._format_moneda(venta["comision_proveedora"]),
-                self._format_moneda(venta.get("comision_fashion_reset", 0)),
-                str(venta["cliente"] or ""),
-                str(venta["tipo_pago"] or ""),
-                str(venta["validacion"] or ""),
-            ]
-            if usa_costo:
-                costo = venta.get("costo", "")
-                valores.insert(5, self._format_moneda(costo) if costo != "" else "-")
-
-            celdas = []
-            for indice, valor in enumerate(valores):
-                ancho = columnas[indice][1]
-                texto = str(valor)
-                if len(texto) > ancho:
-                    texto = texto[: ancho - 1] + "."
-                celdas.append(texto.ljust(ancho))
-
-            filas.append(" | ".join(celdas))
-
-        return "\n".join(filas)
 
     def _construir_resumen_eliminar_prendas(self, datos):
         lineas = [f"ELIMINADAS: {datos['cantidad_eliminadas']}"]
@@ -4610,12 +4121,7 @@ class AppFashionReset(ctk.CTk):
         entry.delete(0, "end")
         entry.insert(0, self._format_precio(texto))
 
-    def _actualizar_tipo_pago_venta(self, tipo_pago, entry_obs, validacion_widget):
-        if tipo_pago in {"EFECTIVO", "DESCUENTO A PROVEEDORA"}:
-            validacion_widget.set("PAGADO")
-        else:
-            validacion_widget.set("PENDIENTE")
-
+    def _actualizar_tipo_pago_venta(self, tipo_pago, entry_obs):
         if tipo_pago == "DESCUENTO A PROVEEDORA":
             entry_obs.configure(
                 placeholder_text="Ingresar código",
@@ -4840,10 +4346,9 @@ class AppFashionReset(ctk.CTk):
                 border_width=1,
                 border_color=COLOR_BORDE_TABLA
             )
-            entry_obs_venta.grid(row=self.fila_actual_venta, column=8, padx=3, pady=4)
+            entry_obs_venta.grid(row=self.fila_actual_venta, column=7, padx=3, pady=4)
 
             tipo_pago_var = ctk.StringVar(value="EFECTIVO")
-            validacion_var = ctk.StringVar(value="PAGADO")
             entry_tipo_pago = ctk.CTkOptionMenu(
                 self.frame_tabla_venta,
                 values=self.tipo_pago_opciones,
@@ -4856,29 +4361,10 @@ class AppFashionReset(ctk.CTk):
                 text_color=COLOR_TEXTO,
                 dropdown_fg_color=COLOR_FONDO,
                 dropdown_text_color=COLOR_TEXTO,
-                command=lambda value, obs=entry_obs_venta, validacion=validacion_var: self._actualizar_tipo_pago_venta(
-                    value,
-                    obs,
-                    validacion
-                )
+                command=lambda value, obs=entry_obs_venta: self._actualizar_tipo_pago_venta(value, obs)
             )
             entry_tipo_pago.grid(row=self.fila_actual_venta, column=6, padx=3, pady=4)
-
-            entry_validacion = ctk.CTkOptionMenu(
-                self.frame_tabla_venta,
-                values=self.validacion_opciones,
-                variable=validacion_var,
-                width=65,
-                corner_radius=0,
-                fg_color=COLOR_FONDO,
-                button_color=COLOR_FONDO,
-                button_hover_color=COLOR_HOVER,
-                text_color=COLOR_TEXTO,
-                dropdown_fg_color=COLOR_FONDO,
-                dropdown_text_color=COLOR_TEXTO
-            )
-            entry_validacion.grid(row=self.fila_actual_venta, column=7, padx=3, pady=4)
-            self._actualizar_tipo_pago_venta("EFECTIVO", entry_obs_venta, validacion_var)
+            self._actualizar_tipo_pago_venta("EFECTIVO", entry_obs_venta)
 
             fila_indice = len(self.filas_venta)
             fila_entradas = [
@@ -4889,7 +4375,6 @@ class AppFashionReset(ctk.CTk):
                 entry_color,
                 entry_precio,
                 entry_tipo_pago,
-                entry_validacion,
                 entry_obs_venta
             ]
 
@@ -4935,5 +4420,6 @@ class AppFashionReset(ctk.CTk):
 
 
 if __name__ == "__main__":
+    quitar_columna_validacion()
     app = AppFashionReset()
     app.mainloop()

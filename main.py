@@ -391,7 +391,6 @@ def guardar_venta_desde_gui(
     fecha_venta,
     cliente,
     tipo_pago,
-    validacion,
     codigo_prenda,
     articulo,
     marca,
@@ -404,7 +403,6 @@ def guardar_venta_desde_gui(
     fecha_venta = str(fecha_venta).strip()
     cliente = limpiar_texto(str(cliente))
     tipo_pago = limpiar_texto(str(tipo_pago))
-    validacion = limpiar_texto(str(validacion))
     codigo_prenda = str(codigo_prenda).strip().upper()
     articulo = str(articulo).strip()
     marca = str(marca).strip()
@@ -414,8 +412,8 @@ def guardar_venta_desde_gui(
     precio_venta_texto = str(precio_venta_texto).strip()
     obs_venta = limpiar_texto(str(obs_venta))
 
-    if not fecha_venta or not cliente or not tipo_pago or not validacion or not codigo_prenda:
-        return False, "ERROR: Fecha, cliente, tipo pago, validación y código prenda son obligatorios."
+    if not fecha_venta or not cliente or not tipo_pago or not codigo_prenda:
+        return False, "ERROR: Fecha, cliente, tipo pago y código prenda son obligatorios."
 
     if tipo_pago == "DESCUENTO A PROVEEDORA":
         if not obs_venta:
@@ -465,7 +463,6 @@ def guardar_venta_desde_gui(
     ws_ingresos.cell(row=fila_numero, column=11, value=precio_venta)
     ws_ingresos.cell(row=fila_numero, column=12, value=cliente)
     ws_ingresos.cell(row=fila_numero, column=13, value=tipo_pago)
-    ws_ingresos.cell(row=fila_numero, column=14, value=validacion)
     ws_ingresos.cell(row=fila_numero, column=16, value=obs_venta)
 
     ws_ventas.append([
@@ -480,7 +477,7 @@ def guardar_venta_desde_gui(
         precio_venta,
         cliente,
         tipo_pago,
-        validacion,
+        None,  # Columna LIBRE (antes VALIDACION)
         obs_venta
     ])
 
@@ -786,14 +783,13 @@ def calcular_resumen_general(mes_texto, anio_texto):
         codigo_prenda = str(fila[2] or "").strip().upper()
         precio_venta = fila[8]
         tipo_pago = fila[10]
-        validacion = fila[11]
 
         try:
             fecha_obj = convertir_fecha(fecha_venta)
         except Exception:
             continue
 
-        if fecha_obj.month == mes and fecha_obj.year == anio and str(validacion).strip().upper() == "PAGADO":
+        if fecha_obj.month == mes and fecha_obj.year == anio:
             if not isinstance(precio_venta, (int, float)):
                 continue
 
@@ -829,7 +825,7 @@ def calcular_resumen_general(mes_texto, anio_texto):
                 resumen_proveedoras[codigo_proveedora]["total_descuentos"] += precio_venta
 
     if total_prendas == 0:
-        return False, "NO SE ENCONTRARON VENTAS PAGADAS EN ESE PERIODO."
+        return False, "NO SE ENCONTRARON VENTAS EN ESE PERIODO."
 
     total_neto_a_pagar = int(total_proveedoras - total_descuentos)
 
@@ -882,11 +878,7 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         return False, "ERROR: No existe la hoja VENTAS en el archivo Excel."
 
     cantidad_ventas = 0
-    cantidad_pagadas = 0
-    cantidad_pendientes = 0
     total_vendido = 0
-    total_pagado = 0
-    total_pendiente = 0
     total_descuentos = 0
     comision_proveedoras = 0
     ganancia = 0
@@ -904,7 +896,6 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         precio_venta = fila[8]
         cliente = fila[9]
         tipo_pago = str(fila[10] or "").strip().upper()
-        validacion = str(fila[11] or "").strip().upper()
         obs_venta = fila[12]
 
         try:
@@ -923,18 +914,12 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         cantidad_ventas += 1
         total_vendido += precio_venta
 
-        if validacion == "PAGADO":
-            montos = _calcular_montos_rendicion(
-                precio_venta,
-                datos_ingresos.get(str(codigo_prenda or "").strip().upper(), {"tipo_rendicion": "PORCENTAJE_60"})
-            )
-            cantidad_pagadas += 1
-            total_pagado += precio_venta
-            comision_proveedoras += montos["comision_proveedora"]
-            ganancia += montos["comision_fashion_reset"]
-        elif validacion == "PENDIENTE":
-            cantidad_pendientes += 1
-            total_pendiente += precio_venta
+        montos = _calcular_montos_rendicion(
+            precio_venta,
+            datos_ingresos.get(str(codigo_prenda or "").strip().upper(), {"tipo_rendicion": "PORCENTAJE_60"})
+        )
+        comision_proveedoras += montos["comision_proveedora"]
+        ganancia += montos["comision_fashion_reset"]
 
         if tipo_pago == "DESCUENTO A PROVEEDORA":
             total_descuentos += precio_venta
@@ -950,7 +935,6 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
             "precio_venta": precio_venta,
             "cliente": str(cliente or "").strip(),
             "tipo_pago": tipo_pago,
-            "validacion": validacion,
             "obs_venta": str(obs_venta or "").strip(),
         })
 
@@ -963,12 +947,8 @@ def calcular_resumen_ventas(fecha_desde_texto, fecha_hasta_texto):
         "fecha_desde": fecha_desde,
         "fecha_hasta": fecha_hasta,
         "cantidad_ventas": cantidad_ventas,
-        "cantidad_pagadas": cantidad_pagadas,
-        "cantidad_pendientes": cantidad_pendientes,
         "total_vendido": total_vendido,
-        "total_pagado": total_pagado,
         "comision_proveedoras": comision_proveedoras,
-        "total_pendiente": total_pendiente,
         "total_descuentos": total_descuentos,
         "ganancia": ganancia,
         "ventas": ventas,
@@ -1115,55 +1095,42 @@ SALDO_FINAL_A_PAGAR: {saldo_final}
 
 
 
-def calcular_ventas_pendientes():
+def quitar_columna_validacion():
+    """Limpia la columna VALIDACION (ya no se usa) y la renombra a LIBRE.
+
+    Se ejecuta al abrir la app y solo actua la primera vez.
+    Antes de limpiar guarda una copia permanente del Excel.
+    """
+    columnas = {"VENTAS": 12, "INGRESOS": 14}
+
     try:
         wb = load_workbook(ARCHIVO_EXCEL)
-        ws_ventas = wb["VENTAS"]
-    except PermissionError:
-        return False, "ERROR: Cierra el archivo Excel antes de continuar."
-    except FileNotFoundError:
-        return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
-    except KeyError:
-        return False, "ERROR: No existe la hoja VENTAS en el archivo Excel."
+        hojas = {nombre: wb[nombre] for nombre in columnas}
+    except (OSError, KeyError):
+        return
 
-    cantidad_pendientes = 0
-    total_pendiente = 0
-    ventas_pendientes = []
+    pendientes = [
+        (nombre, columna) for nombre, columna in columnas.items()
+        if str(hojas[nombre].cell(row=1, column=columna).value or "").strip().upper() == "VALIDACION"
+    ]
+    if not pendientes:
+        return
 
-    for fila in ws_ventas.iter_rows(min_row=2, values_only=True):
-        fecha_venta = fila[0]
-        codigo_proveedora = fila[1]
-        codigo_prenda = fila[2]
-        articulo = fila[3]
-        precio_venta = fila[8]
-        cliente = fila[9]
-        tipo_pago = fila[10]
-        validacion = str(fila[11] or "").strip().upper()
+    os.makedirs(CARPETA_BACKUPS, exist_ok=True)
+    ruta_copia = os.path.join(CARPETA_BACKUPS, "antes_de_quitar_validacion.xlsx")
+    if not os.path.exists(ruta_copia):
+        shutil.copy2(ARCHIVO_EXCEL, ruta_copia)
 
-        if validacion == "PENDIENTE":
-            cantidad_pendientes += 1
-            if isinstance(precio_venta, (int, float)):
-                total_pendiente += int(precio_venta)
+    for nombre, columna in pendientes:
+        hoja = hojas[nombre]
+        hoja.cell(row=1, column=columna, value="LIBRE")
+        for fila in range(2, hoja.max_row + 1):
+            hoja.cell(row=fila, column=columna).value = None
 
-            ventas_pendientes.append({
-                "fecha_venta": fecha_venta,
-                "codigo_proveedora": str(codigo_proveedora or "").strip().upper(),
-                "codigo_prenda": str(codigo_prenda or "").strip().upper(),
-                "articulo": str(articulo or "").strip(),
-                "precio_venta": int(precio_venta) if isinstance(precio_venta, (int, float)) else 0,
-                "cliente": str(cliente or "").strip(),
-                "tipo_pago": str(tipo_pago or "").strip(),
-                "validacion": validacion
-            })
-
-    if cantidad_pendientes == 0:
-        return False, "NO HAY VENTAS PENDIENTES DE VALIDACION."
-
-    return True, {
-        "cantidad_pendientes": cantidad_pendientes,
-        "total_importe_pendiente": total_pendiente,
-        "ventas_pendientes": ventas_pendientes
-    }
+    try:
+        guardar_archivo_excel(wb)
+    except OSError:
+        pass
 
 
 def calcular_prendas_vencidas():
@@ -1921,50 +1888,6 @@ def guardar_decisiones_remarque_desde_gui(codigo_proveedora, decisiones):
     }
 
 
-def validar_venta_pendiente_por_codigo(codigo_prenda):
-    codigo_prenda = limpiar_texto(str(codigo_prenda))
-
-    if not codigo_prenda:
-        return False, "ERROR: CODIGO_PRENDA es obligatorio."
-
-    try:
-        wb = load_workbook(ARCHIVO_EXCEL)
-        ws_ingresos = wb["INGRESOS"]
-        ws_ventas = wb["VENTAS"]
-    except PermissionError:
-        return False, "ERROR: Cierra el archivo Excel antes de continuar."
-    except FileNotFoundError:
-        return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
-    except KeyError:
-        return False, "ERROR: No existe la hoja INGRESOS o VENTAS en el archivo Excel."
-
-    venta_encontrada = False
-
-    for fila in ws_ventas.iter_rows(min_row=2):
-        if str(fila[2].value or "").strip().upper() == codigo_prenda:
-            venta_encontrada = True
-            validacion_actual = str(fila[11].value or "").strip().upper()
-
-            if validacion_actual == "PAGADO":
-                return False, "ERROR: ESTA VENTA YA ESTA VALIDADA COMO PAGADO."
-
-            fila[11].value = "PAGADO"
-            break
-
-    if not venta_encontrada:
-        return False, "ERROR: NO SE ENCONTRO LA VENTA EN VENTAS."
-
-    for fila in ws_ingresos.iter_rows(min_row=2):
-        if str(fila[2].value or "").strip().upper() == codigo_prenda:
-            fila[13].value = "PAGADO"
-            break
-
-    try:
-        guardar_archivo_excel(wb)
-    except PermissionError:
-        return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
-
-    return True, f"VENTA {codigo_prenda} VALIDADA CORRECTAMENTE."
 
 
                                         # VENTAS PENDIENTES DE VALIDACION
@@ -2147,7 +2070,6 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
         precio_venta = fila[8]
         cliente = fila[9]
         tipo_pago = fila[10]
-        validacion = fila[11]
 
         try:
             fecha_obj = convertir_fecha(fecha_venta)
@@ -2158,7 +2080,6 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
             fecha_obj.month == mes
             and fecha_obj.year == anio
             and codigo_proveedora_fila == codigo_proveedora
-            and str(validacion).strip().upper() == "PAGADO"
         ):
             if not isinstance(precio_venta, (int, float)):
                 continue
@@ -2185,14 +2106,12 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
                 "comision_fashion_reset": montos["comision_fashion_reset"],
                 "cliente": cliente,
                 "tipo_pago": tipo_pago,
-                "validacion": validacion
             })
 
     for fila in ws_ventas.iter_rows(min_row=2, values_only=True):
         fecha_venta = fila[0]
         precio_venta = fila[8]
         tipo_pago = fila[10]
-        validacion = fila[11]
         obs_venta = str(fila[12] or "").strip().upper()
 
         try:
@@ -2200,14 +2119,14 @@ def calcular_rendicion_proveedora(mes_texto, anio_texto, codigo_proveedora):
         except Exception:
             continue
 
-        if fecha_obj.month == mes and fecha_obj.year == anio and str(validacion).strip().upper() == "PAGADO":
+        if fecha_obj.month == mes and fecha_obj.year == anio:
             if str(tipo_pago).strip().upper() == "DESCUENTO A PROVEEDORA":
                 texto_esperado = f"DESCUENTO_PROVEEDORA: {codigo_proveedora}"
                 if obs_venta == texto_esperado and isinstance(precio_venta, (int, float)):
                     total_descuentos += int(precio_venta)
 
     if cantidad_prendas == 0:
-        return False, "NO SE ENCONTRARON VENTAS PAGADAS PARA ESTA PROVEEDORA EN ESE PERIODO."
+        return False, "NO SE ENCONTRARON VENTAS PARA ESTA PROVEEDORA EN ESE PERIODO."
 
     saldo_final = int(comision_proveedora - total_descuentos)
 
@@ -2421,7 +2340,6 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             precio_venta = fila[8]
             cliente = fila[9]
             tipo_pago = str(fila[10] or "").strip().upper()
-            validacion = str(fila[11] or "").strip().upper()
             obs_venta = str(fila[12] or "").strip().upper()
 
             try:
@@ -2432,7 +2350,6 @@ def exportar_rendicion_excel(mes, anio, codigo_proveedora, ventas_rendicion, can
             if (
                 fecha_obj.month == int(mes)
                 and fecha_obj.year == int(anio)
-                and validacion == "PAGADO"
                 and tipo_pago == "DESCUENTO A PROVEEDORA"
                 and obs_venta == f"DESCUENTO_PROVEEDORA: {str(codigo_proveedora).strip().upper()}"
             ):
@@ -2621,7 +2538,6 @@ def obtener_venta_desde_gui(codigo_prenda):
                 "precio_venta": fila[8] if isinstance(fila[8], (int, float)) else str(fila[8] or "").strip(),
                 "cliente": str(fila[9] or "").strip(),
                 "tipo_pago": str(fila[10] or "").strip(),
-                "validacion": str(fila[11] or "").strip(),
                 "obs_venta": str(fila[12] or "").strip(),
             }
 
@@ -2633,7 +2549,6 @@ def actualizar_venta_desde_gui(
     fecha_venta,
     cliente,
     tipo_pago,
-    validacion,
     precio_venta_texto,
     obs_venta
 ):
@@ -2641,14 +2556,13 @@ def actualizar_venta_desde_gui(
     fecha_venta = str(fecha_venta).strip()
     cliente = limpiar_texto(str(cliente))
     tipo_pago = limpiar_texto(str(tipo_pago))
-    validacion = limpiar_texto(str(validacion))
     precio_venta_texto = str(precio_venta_texto).strip()
     obs_venta = normalizar_obs_descuento_proveedora(tipo_pago, obs_venta)
 
     if not codigo_prenda:
         return False, "ERROR: CODIGO_PRENDA es obligatorio."
-    if not fecha_venta or not cliente or not tipo_pago or not validacion:
-        return False, "ERROR: Fecha, cliente, tipo pago y validacion son obligatorios."
+    if not fecha_venta or not cliente or not tipo_pago:
+        return False, "ERROR: Fecha, cliente y tipo pago son obligatorios."
     if tipo_pago == "DESCUENTO A PROVEEDORA" and not obs_venta:
         return False, "ERROR: Debes indicar el codigo de la proveedora para el descuento."
 
@@ -2695,14 +2609,12 @@ def actualizar_venta_desde_gui(
     fila_venta[8].value = precio_venta
     fila_venta[9].value = cliente
     fila_venta[10].value = tipo_pago
-    fila_venta[11].value = validacion
     fila_venta[12].value = obs_venta
 
     fila_ingreso[9].value = fecha_venta
     fila_ingreso[10].value = precio_venta
     fila_ingreso[11].value = cliente
     fila_ingreso[12].value = tipo_pago
-    fila_ingreso[13].value = validacion
     fila_ingreso[15].value = obs_venta
 
     try:
@@ -2779,7 +2691,6 @@ def buscar_prendas_desde_gui(texto_busqueda):
             "precio_venta": fila[10] if isinstance(fila[10], (int, float)) else str(fila[10] or "").strip(),
             "cliente": str(fila[11] or "").strip(),
             "tipo_pago": str(fila[12] or "").strip().upper(),
-            "validacion": str(fila[13] or "").strip().upper(),
             "obs_ingreso": str(fila[14] or "").strip(),
             "obs_venta": str(fila[15] or "").strip(),
         }
