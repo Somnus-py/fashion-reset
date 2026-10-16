@@ -3158,11 +3158,11 @@ class AppFashionReset(ctk.CTk):
             ("Fecha", 0, 10),
             ("Proveedora", 0, 8),
             ("Codigo", 0, 8),
-            ("Articulo", 4, 80),
+            ("Articulo", 3, 80),
             ("Color", 2, 60),
             ("Precio", 0, 12),
-            ("Cliente", 4, 40),
-            ("Tipo pago", 1, 14),
+            ("Cliente", 3, 40),
+            ("Tipo pago", 3, 22),
             ("Obs venta", 3, 70),
         ]
 
@@ -3187,7 +3187,14 @@ class AppFashionReset(ctk.CTk):
                 anchor="w",
                 fg_color="#F2F2F2",
                 height=30
-            ).grid(row=0, column=columna, padx=1, pady=(0, 2), sticky="ew")
+            ).grid(row=0, column=columna, padx=(1, 6), pady=(0, 2), sticky="ew")
+
+        # El texto largo baja de linea segun el ancho real de cada columna.
+        self.frame_tabla_resumen_ventas.update_idletasks()
+        anchos_wrap = [
+            max(60, self.frame_tabla_resumen_ventas.grid_bbox(columna, 0)[2] - 10)
+            for columna in range(len(columnas))
+        ]
 
         for fila_indice, fila in enumerate(filas, start=1):
             fondo = "#FFFFFF" if fila_indice % 2 else "#FAFAFA"
@@ -3208,8 +3215,8 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna in (3, 6) else 170 if columna == 4 else 220 if columna == 8 else 0
-                alto = 44 if columna in (3, 4, 6, 8) else 28
+                wraplength = anchos_wrap[columna] if columna in (3, 4, 6, 7, 8) else 0
+                alto = 44 if columna in (3, 4, 6, 7, 8) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_resumen_ventas,
@@ -3221,7 +3228,7 @@ class AppFashionReset(ctk.CTk):
                     wraplength=wraplength,
                     fg_color=fondo,
                     height=alto
-                ).grid(row=fila_indice, column=columna, padx=1, pady=1, sticky="ew")
+                ).grid(row=fila_indice, column=columna, padx=(1, 6), pady=1, sticky="ew")
 
     def _mostrar_buscador_prendas(self, texto):
         if not hasattr(self, "textbox_buscador_prendas"):
