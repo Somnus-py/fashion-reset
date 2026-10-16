@@ -1,4 +1,5 @@
 ﻿from datetime import datetime
+import unicodedata
 
 import customtkinter as ctk
 from tkinter import messagebox
@@ -1516,6 +1517,43 @@ class AppFashionReset(ctk.CTk):
         )
         self.label_resumen_ventas_estado.grid(row=0, column=5, columnspan=3, padx=(0, 0), pady=4, sticky="ew")
 
+        self.ventas_resumen_actual = []
+
+        frame_filtros_texto = ctk.CTkFrame(self.frame_resumen_ventas, fg_color=COLOR_FONDO)
+        frame_filtros_texto.pack(fill="x", padx=20, pady=(0, 4))
+        frame_filtros_texto.grid_columnconfigure(5, weight=1)
+
+        ctk.CTkLabel(frame_filtros_texto, text="Cliente", text_color=COLOR_TEXTO).grid(row=0, column=0, padx=(0, 6), pady=4, sticky="w")
+        self.entry_resumen_ventas_cliente = ctk.CTkEntry(frame_filtros_texto, width=180)
+        self.entry_resumen_ventas_cliente.grid(row=0, column=1, padx=(0, 14), pady=4, sticky="w")
+        self.entry_resumen_ventas_cliente.bind("<Return>", lambda event: self.actualizar_filtro_resumen_ventas())
+
+        ctk.CTkLabel(frame_filtros_texto, text="Obs venta", text_color=COLOR_TEXTO).grid(row=0, column=2, padx=(0, 6), pady=4, sticky="w")
+        self.entry_resumen_ventas_obs = ctk.CTkEntry(frame_filtros_texto, width=180)
+        self.entry_resumen_ventas_obs.grid(row=0, column=3, padx=(0, 14), pady=4, sticky="w")
+        self.entry_resumen_ventas_obs.bind("<Return>", lambda event: self.actualizar_filtro_resumen_ventas())
+
+        boton_filtrar = ctk.CTkButton(
+            frame_filtros_texto,
+            text="Filtrar",
+            font=FUENTE_BOTON,
+            fg_color=COLOR_FONDO,
+            hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            border_width=1,
+            border_color=COLOR_TEXTO,
+            command=self.actualizar_filtro_resumen_ventas
+        )
+        boton_filtrar.grid(row=0, column=4, padx=(0, 14), pady=4, sticky="w")
+
+        self.label_resumen_ventas_filtro = ctk.CTkLabel(
+            frame_filtros_texto,
+            text="",
+            text_color="#555555",
+            font=FUENTE_SUBTITULO
+        )
+        self.label_resumen_ventas_filtro.grid(row=0, column=5, padx=(0, 0), pady=4, sticky="w")
+
         frame_resumen = ctk.CTkFrame(self.frame_resumen_ventas, fg_color=COLOR_FONDO)
         frame_resumen.pack(fill="x", padx=20, pady=(0, 4))
         for columna in range(4):
@@ -1592,7 +1630,8 @@ class AppFashionReset(ctk.CTk):
 
         frame_busqueda = ctk.CTkFrame(self.frame_buscador_prendas, fg_color=COLOR_FONDO)
         frame_busqueda.pack(fill="x", padx=20, pady=(6, 4))
-        frame_busqueda.grid_columnconfigure(3, weight=1)
+        frame_busqueda.grid_columnconfigure(5, weight=1)
+        self.resultados_buscador_prendas = []
 
         ctk.CTkLabel(
             frame_busqueda,
@@ -1617,13 +1656,31 @@ class AppFashionReset(ctk.CTk):
         )
         boton_buscar.grid(row=0, column=2, padx=(0, 14), pady=4, sticky="w")
 
+        ctk.CTkLabel(frame_busqueda, text="Mostrar", text_color=COLOR_TEXTO).grid(
+            row=0, column=3, padx=(0, 6), pady=4, sticky="w"
+        )
+        self.filtro_estado_buscador = ctk.StringVar(value="TODAS")
+        ctk.CTkOptionMenu(
+            frame_busqueda,
+            values=["TODAS", "DISPONIBLES", "VENDIDAS"],
+            variable=self.filtro_estado_buscador,
+            width=140,
+            fg_color=COLOR_FONDO,
+            button_color=COLOR_FONDO,
+            button_hover_color=COLOR_HOVER,
+            text_color=COLOR_TEXTO,
+            dropdown_fg_color=COLOR_FONDO,
+            dropdown_text_color=COLOR_TEXTO,
+            command=lambda _valor: self.actualizar_filtro_buscador_prendas()
+        ).grid(row=0, column=4, padx=(0, 14), pady=4, sticky="w")
+
         self.label_buscador_estado = ctk.CTkLabel(
             frame_busqueda,
             text="",
             text_color="#555555",
             font=FUENTE_SUBTITULO
         )
-        self.label_buscador_estado.grid(row=0, column=3, padx=(0, 0), pady=4, sticky="ew")
+        self.label_buscador_estado.grid(row=0, column=5, padx=(0, 0), pady=4, sticky="ew")
 
         self.frame_tabla_buscador_prendas = ctk.CTkScrollableFrame(
             self.frame_buscador_prendas,
@@ -2306,6 +2363,8 @@ class AppFashionReset(ctk.CTk):
         )
 
         if not resultado:
+            self.ventas_resumen_actual = []
+            self.label_resumen_ventas_filtro.configure(text="")
             self.label_resumen_ventas_estado.configure(text=datos, text_color="#B00020")
             self._limpiar_resumen_ventas()
             self._mostrar_tabla_resumen_ventas([], "No se encontraron resultados para mostrar.")
@@ -2326,7 +2385,40 @@ class AppFashionReset(ctk.CTk):
         self.resumen_ventas_vars["total_pendiente"].set(self._format_moneda(datos["total_pendiente"]))
         self.resumen_ventas_vars["total_descuentos"].set(self._format_moneda(datos["total_descuentos"]))
         self.resumen_ventas_vars["ganancia"].set(self._format_moneda(datos["ganancia"]))
-        self._mostrar_tabla_resumen_ventas(datos["ventas"])
+        self.ventas_resumen_actual = datos["ventas"]
+        self.actualizar_filtro_resumen_ventas()
+
+    def actualizar_filtro_resumen_ventas(self):
+        if not self.ventas_resumen_actual:
+            return
+
+        texto_cliente = self._normalizar_texto_filtro(self.entry_resumen_ventas_cliente.get())
+        texto_obs = self._normalizar_texto_filtro(self.entry_resumen_ventas_obs.get())
+
+        filas = [
+            fila for fila in self.ventas_resumen_actual
+            if texto_cliente in self._normalizar_texto_filtro(fila["cliente"])
+            and texto_obs in self._normalizar_texto_filtro(fila["obs_venta"])
+        ]
+
+        if texto_cliente or texto_obs:
+            total_filtrado = sum(fila["precio_venta"] for fila in filas)
+            self.label_resumen_ventas_filtro.configure(
+                text=(
+                    f"Mostrando {len(filas)} de {len(self.ventas_resumen_actual)} ventas. "
+                    f"Total: {self._format_moneda(total_filtrado)}"
+                ),
+                text_color="#2E5E2E"
+            )
+        else:
+            self.label_resumen_ventas_filtro.configure(text="")
+
+        self._mostrar_tabla_resumen_ventas(filas, "No hay ventas que coincidan con el filtro.")
+
+    def _normalizar_texto_filtro(self, texto):
+        texto = unicodedata.normalize("NFKD", str(texto or ""))
+        texto = "".join(caracter for caracter in texto if not unicodedata.combining(caracter))
+        return " ".join(texto.upper().split())
 
     def buscar_prendas_desde_pantalla(self):
         resultado, datos = buscar_prendas_desde_gui(
@@ -2334,15 +2426,29 @@ class AppFashionReset(ctk.CTk):
         )
 
         if not resultado:
+            self.resultados_buscador_prendas = []
             self.label_buscador_estado.configure(text=datos, text_color="#B00020")
             self._mostrar_tabla_buscador_prendas([], "No se encontraron resultados para mostrar.")
             return
 
-        self.label_buscador_estado.configure(
-            text=f"Se encontraron {datos['cantidad']} prendas para: {datos['texto_busqueda']}.",
-            text_color="#2E5E2E"
-        )
-        self._mostrar_tabla_buscador_prendas(datos["resultados"])
+        self.resultados_buscador_prendas = datos["resultados"]
+        self.texto_buscador_prendas = datos["texto_busqueda"]
+        self.actualizar_filtro_buscador_prendas()
+
+    def actualizar_filtro_buscador_prendas(self):
+        if not self.resultados_buscador_prendas:
+            return
+
+        filtro = self.filtro_estado_buscador.get()
+        filas = self._filtrar_prendas_por_estado(self.resultados_buscador_prendas, filtro)
+        total = len(self.resultados_buscador_prendas)
+
+        texto = f"Se encontraron {total} prendas para: {self.texto_buscador_prendas}."
+        if filtro != "TODAS":
+            texto += f" Mostrando {len(filas)} {filtro.lower()}."
+
+        self.label_buscador_estado.configure(text=texto, text_color="#2E5E2E")
+        self._mostrar_tabla_buscador_prendas(filas, f"No hay prendas {filtro.lower()} en esta busqueda.")
 
     def buscar_ventas_pendientes(self):
         resultado, datos = calcular_ventas_pendientes()
@@ -3456,6 +3562,7 @@ class AppFashionReset(ctk.CTk):
             ("Cliente", 1, 16),
             ("Tipo pago", 1, 14),
             ("Validacion", 1, 12),
+            ("Obs venta", 3, 70),
         ]
 
         for indice, (_, peso, _) in enumerate(columnas):
@@ -3493,6 +3600,7 @@ class AppFashionReset(ctk.CTk):
                 str(fila["cliente"] or ""),
                 str(fila["tipo_pago"] or ""),
                 str(fila["validacion"] or ""),
+                str(fila["obs_venta"] or ""),
             ]
 
             for columna, valor in enumerate(valores):
@@ -3500,8 +3608,8 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 3 else 170 if columna == 4 else 0
-                alto = 44 if columna in (3, 4) else 28
+                wraplength = 230 if columna == 3 else 170 if columna == 4 else 220 if columna == 9 else 0
+                alto = 44 if columna in (3, 4, 9) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_resumen_ventas,
@@ -3548,7 +3656,7 @@ class AppFashionReset(ctk.CTk):
             ("Estado", 1, 12),
             ("Ingreso", 0, 10),
             ("Precio", 1, 12),
-            ("Cliente", 1, 16),
+            ("Cliente", 2, 40),
             ("Venta", 0, 10),
             ("Obs venta", 3, 70),
         ]
@@ -3603,8 +3711,8 @@ class AppFashionReset(ctk.CTk):
                 ancho_maximo = columnas[columna][2]
                 if len(texto) > ancho_maximo:
                     texto = texto[:ancho_maximo - 1] + "."
-                wraplength = 230 if columna == 1 else 170 if columna == 4 else 220 if columna == 10 else 0
-                alto = 44 if columna in (1, 4, 10) else 28
+                wraplength = 230 if columna == 1 else 170 if columna in (4, 8) else 220 if columna == 10 else 0
+                alto = 44 if columna in (1, 4, 8, 10) else 28
 
                 ctk.CTkLabel(
                     self.frame_tabla_buscador_prendas,
@@ -3849,21 +3957,21 @@ class AppFashionReset(ctk.CTk):
         if not hasattr(self, "detalle_proveedora_actual"):
             return
 
-        filtro = self.filtro_estado_proveedora.get().strip().upper()
-        filas = self.detalle_proveedora_actual
-
-        if filtro == "DISPONIBLES":
-            filas = [
-                fila for fila in filas
-                if str(fila.get("estado") or "").strip().upper() == "DISPONIBLE"
-            ]
-        elif filtro == "VENDIDAS":
-            filas = [
-                fila for fila in filas
-                if str(fila.get("estado") or "").strip().upper() == "VENDIDO"
-            ]
-
+        filtro = self.filtro_estado_proveedora.get()
+        filas = self._filtrar_prendas_por_estado(self.detalle_proveedora_actual, filtro)
         self._mostrar_tabla_proveedora(filas)
+
+    def _filtrar_prendas_por_estado(self, filas, filtro):
+        estados_por_filtro = {"DISPONIBLES": "DISPONIBLE", "VENDIDAS": "VENDIDO"}
+        estado_buscado = estados_por_filtro.get(filtro.strip().upper())
+
+        if estado_buscado is None:
+            return filas
+
+        return [
+            fila for fila in filas
+            if str(fila.get("estado") or "").strip().upper() == estado_buscado
+        ]
 
     def _construir_tabla_resumen_general(self, filas):
         if not filas:
