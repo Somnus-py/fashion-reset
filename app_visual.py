@@ -9,6 +9,8 @@ from main import (
     actualizar_prenda_desde_gui,
     buscar_ingreso_por_codigo,
     buscar_prendas_desde_gui,
+    abrir_excel_para_lote,
+    guardar_excel_lote,
     eliminar_ingresos_desde_gui,
     obtener_prenda_desde_gui,
     obtener_venta_desde_gui,
@@ -20,16 +22,15 @@ from main import (
     exportar_lote_remarque_excel,
     exportar_prendas_disponibles_proveedora_excel,
     exportar_rendicion_excel,
-    guardar_decisiones_remarque_desde_gui,
     guardar_lote_remarque_desde_gui,
     guardar_ingreso_desde_gui,
     guardar_venta_desde_gui,
     normalizar_obs_descuento_proveedora,
     obtener_lote_remarque_proveedora_desde_gui,
-    obtener_lote_decision_remarque_desde_gui,
     obtener_proveedora_desde_gui,
     obtener_ruta_en_base,
     quitar_columna_validacion,
+    aplicar_remarques_pendientes,
     obtener_todas_las_proveedoras_desde_gui,
     PROVEEDORAS_CON_COSTO,
     registrar_devolucion_desde_gui,
@@ -626,7 +627,6 @@ class AppFashionReset(ctk.CTk):
         botones = [
             ("Ver prendas vencidas", self.abrir_ventana_prendas_vencidas),
             ("Remarcar", self.abrir_ventana_remarque),
-            ("Aprobación de remarque", self.abrir_ventana_aprobacion_remarque),
             ("Devolución", self.abrir_ventana_devolucion),
         ]
 
@@ -798,7 +798,7 @@ class AppFashionReset(ctk.CTk):
             ("Precio actual", 5, 100),
             ("Días", 6, 60),
             ("Último remarque", 7, 110),
-            ("Precio remarcado", 8, 120),
+            ("Precio nuevo", 8, 120),
         ]
         for texto, columna, ancho in encabezados:
             ctk.CTkLabel(
@@ -909,114 +909,6 @@ class AppFashionReset(ctk.CTk):
         )
         boton_guardar.pack(side="right", padx=10)
         self._resetear_scroll(self.frame_devolucion)
-
-    def abrir_ventana_aprobacion_remarque(self):
-        self._ocultar_frames_secundarios()
-        self.frame_devolucion.pack(pady=(5, 10), padx=30, fill="both", expand=True)
-
-        for widget in self.frame_devolucion.winfo_children():
-            widget.destroy()
-
-        self._crear_encabezado(self.frame_devolucion, "APROBACIÓN DE REMARQUE", self.abrir_modulo_devolucion)
-
-        frame_busqueda = ctk.CTkFrame(self.frame_devolucion, fg_color=COLOR_FONDO)
-        frame_busqueda.pack(fill="x", padx=20, pady=10)
-
-        ctk.CTkLabel(frame_busqueda, text="Código proveedora", text_color=COLOR_TEXTO).grid(
-            row=0, column=0, padx=10, pady=5, sticky="w"
-        )
-        self.entry_aprobacion_remarque_proveedora = ctk.CTkEntry(frame_busqueda, width=180)
-        self.entry_aprobacion_remarque_proveedora.grid(row=1, column=0, padx=10, pady=5, sticky="w")
-
-        boton_buscar = ctk.CTkButton(
-            frame_busqueda,
-            text="Buscar pendientes",
-            font=FUENTE_BOTON,
-            fg_color=COLOR_FONDO,
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=1,
-            border_color=COLOR_TEXTO,
-            command=self.buscar_lote_aprobacion_remarque
-        )
-        boton_buscar.grid(row=1, column=1, padx=10, pady=5, sticky="w")
-
-        self.label_estado_aprobacion_remarque = ctk.CTkLabel(
-            self.frame_devolucion,
-            text="Buscá una proveedora para cargar sus remarques pendientes.",
-            text_color="#555555",
-            font=FUENTE_SUBTITULO
-        )
-        self.label_estado_aprobacion_remarque.pack(fill="x", padx=20, pady=(0, 10))
-
-        frame_resumen = ctk.CTkFrame(self.frame_devolucion, fg_color=COLOR_FONDO)
-        frame_resumen.pack(fill="x", padx=20, pady=10)
-
-        self.aprobacion_remarque_vars = {
-            "nombre_proveedora": ctk.StringVar(value="-"),
-            "cantidad_prendas": ctk.StringVar(value="-"),
-        }
-
-        ctk.CTkLabel(frame_resumen, text="Proveedora", text_color=COLOR_TEXTO).grid(
-            row=0, column=0, padx=10, pady=(6, 2), sticky="w"
-        )
-        ctk.CTkLabel(
-            frame_resumen,
-            textvariable=self.aprobacion_remarque_vars["nombre_proveedora"],
-            text_color=COLOR_TEXTO,
-            font=FUENTE_SUBTITULO
-        ).grid(row=1, column=0, padx=10, pady=(0, 8), sticky="w")
-
-        ctk.CTkLabel(frame_resumen, text="Pendientes", text_color=COLOR_TEXTO).grid(
-            row=0, column=1, padx=10, pady=(6, 2), sticky="w"
-        )
-        ctk.CTkLabel(
-            frame_resumen,
-            textvariable=self.aprobacion_remarque_vars["cantidad_prendas"],
-            text_color=COLOR_TEXTO,
-            font=FUENTE_SUBTITULO
-        ).grid(row=1, column=1, padx=10, pady=(0, 8), sticky="w")
-
-        self.frame_tabla_aprobacion_remarque = ctk.CTkScrollableFrame(
-            self.frame_devolucion,
-            fg_color=COLOR_FONDO,
-            height=320
-        )
-        self.frame_tabla_aprobacion_remarque.pack(fill="both", expand=True, padx=20, pady=(0, 10))
-
-        encabezados = [
-            ("Código", 0, 90),
-            ("Artículo", 1, 130),
-            ("Precio actual", 2, 100),
-            ("Precio remarcado", 3, 120),
-            ("Fecha remarque", 4, 100),
-            ("Decisión", 5, 120),
-        ]
-        for texto, columna, ancho in encabezados:
-            ctk.CTkLabel(
-                self.frame_tabla_aprobacion_remarque,
-                text=texto,
-                text_color=COLOR_TEXTO,
-                width=ancho
-            ).grid(row=0, column=columna, padx=4, pady=(0, 6), sticky="w")
-
-        self.filas_aprobacion_remarque = []
-        self.fila_actual_aprobacion_remarque = 1
-        self.lote_aprobacion_remarque_actual = None
-        self.decision_remarque_opciones = ["PENDIENTE", "APROBADO", "DEVOLVER"]
-
-        boton_guardar = ctk.CTkButton(
-            self.frame_devolucion,
-            text="Guardar decisiones",
-            font=FUENTE_BOTON,
-            fg_color=COLOR_FONDO,
-            hover_color=COLOR_HOVER,
-            text_color=COLOR_TEXTO,
-            border_width=1,
-            border_color=COLOR_TEXTO,
-            command=self.guardar_decisiones_remarque
-        )
-        boton_guardar.pack(anchor="e", padx=20, pady=(0, 20))
 
     def abrir_editar_venta(self):
         self._ocultar_frames_secundarios()
@@ -2000,10 +1892,15 @@ class AppFashionReset(ctk.CTk):
             messagebox.showerror("Guardar lote", "Fecha venta y cliente son obligatorios.")
             return
 
-        guardadas = 0
+        excel_abierto, wb = abrir_excel_para_lote()
+        if not excel_abierto:
+            messagebox.showerror("Guardar lote", wb)
+            return
+
         ignoradas = 0
         errores = []
         codigos_guardados = []
+        filas_guardadas = []
 
         for indice, fila in enumerate(self.filas_venta, start=1):
             codigo_prenda = fila[0].get().strip()
@@ -2026,7 +1923,7 @@ class AppFashionReset(ctk.CTk):
                 continue
 
             if not precio_texto:
-                resultado_busqueda, datos_prenda = buscar_ingreso_por_codigo(codigo_prenda)
+                resultado_busqueda, datos_prenda = buscar_ingreso_por_codigo(codigo_prenda, wb=wb)
                 if resultado_busqueda:
                     precio_texto = str(datos_prenda["precio_lista"] or "").strip()
                     fila[5].configure(state="normal")
@@ -2064,30 +1961,23 @@ class AppFashionReset(ctk.CTk):
                 fila[4].get().strip(),
                 precio_texto_sin_separadores,
                 precio_texto_sin_separadores,
-                obs_venta
+                obs_venta,
+                wb=wb
             )
 
             if resultado:
-                guardadas += 1
                 codigos_guardados.append(codigo_prenda)
-                fila[0].configure(border_color=COLOR_TEXTO, state="normal")
-                fila[0].delete(0, "end")
-                fila[1].delete(0, "end")
-                fila[1].configure(state="disabled")
-                fila[2].delete(0, "end")
-                fila[2].configure(state="disabled")
-                fila[3].delete(0, "end")
-                fila[3].configure(state="disabled")
-                fila[4].delete(0, "end")
-                fila[4].configure(state="disabled")
-                fila[5].delete(0, "end")
-                fila[5].configure(state="disabled")
-                fila[6].set("EFECTIVO")
-                fila[7].delete(0, "end")
-                self._actualizar_tipo_pago_venta("EFECTIVO", fila[7])
+                filas_guardadas.append(fila)
             else:
                 errores.append(f"Fila {indice}: {mensaje}")
                 fila[0].configure(border_color="red")
+
+        filas_guardadas, codigos_guardados = self._guardar_lote_en_excel(
+            wb, filas_guardadas, codigos_guardados, errores, "venta"
+        )
+        for fila in filas_guardadas:
+            self._limpiar_fila_venta(fila)
+        guardadas = len(filas_guardadas)
 
         resumen = [
             f"Guardadas: {guardadas}",
@@ -2118,10 +2008,15 @@ class AppFashionReset(ctk.CTk):
             messagebox.showerror("Guardar lote", "Fecha ingreso y código proveedora son obligatorios.")
             return
 
-        guardadas = 0
+        excel_abierto, wb = abrir_excel_para_lote()
+        if not excel_abierto:
+            messagebox.showerror("Guardar lote", wb)
+            return
+
         ignoradas = 0
         errores = []
         codigos_guardados = []
+        filas_guardadas = []
 
         for indice, fila in enumerate(self.filas_ingreso, start=1):
             numero_prenda = fila[0].get().strip()
@@ -2151,16 +2046,23 @@ class AppFashionReset(ctk.CTk):
                 color,
                 precio_texto,
                 obs_ingreso,
-                costo_texto
+                costo_texto,
+                wb=wb
             )
 
             if resultado:
-                guardadas += 1
                 codigos_guardados.append(str(mensaje))
-                for entrada in fila:
-                    entrada.delete(0, "end")
+                filas_guardadas.append(fila)
             else:
                 errores.append(f"Fila {indice}: {mensaje}")
+
+        filas_guardadas, codigos_guardados = self._guardar_lote_en_excel(
+            wb, filas_guardadas, codigos_guardados, errores, "prenda"
+        )
+        for fila in filas_guardadas:
+            for entrada in fila:
+                entrada.delete(0, "end")
+        guardadas = len(filas_guardadas)
 
         resumen = [
             f"Guardadas: {guardadas}",
@@ -2178,6 +2080,29 @@ class AppFashionReset(ctk.CTk):
             messagebox.showwarning("Resumen de guardado", "\n".join(resumen))
         else:
             messagebox.showinfo("Resumen de guardado", "\n".join(resumen))
+
+    def _guardar_lote_en_excel(self, wb, filas_guardadas, codigos_guardados, errores, nombre_item):
+        """Guarda el lote una sola vez. Si falla, no se da por guardada ninguna fila."""
+        if not filas_guardadas:
+            return [], []
+
+        guardado_ok, mensaje = guardar_excel_lote(wb)
+        if guardado_ok:
+            return filas_guardadas, codigos_guardados
+
+        errores.insert(0, f"{mensaje} No se guardó ninguna {nombre_item} del lote; las filas quedaron cargadas.")
+        return [], []
+
+    def _limpiar_fila_venta(self, fila):
+        fila[0].configure(border_color=COLOR_TEXTO, state="normal")
+        fila[0].delete(0, "end")
+        for entrada in fila[1:6]:
+            entrada.configure(state="normal")
+            entrada.delete(0, "end")
+            entrada.configure(state="disabled")
+        fila[6].set("EFECTIVO")
+        fila[7].delete(0, "end")
+        self._actualizar_tipo_pago_venta("EFECTIVO", fila[7])
 
     def buscar_resumen_general(self):
         resultado, datos = calcular_resumen_general(
@@ -2495,6 +2420,7 @@ class AppFashionReset(ctk.CTk):
 
     def buscar_lote_remarque(self):
         codigo_proveedora = self.entry_remarque_proveedora.get().strip()
+        self.ultimo_lote_remarque_guardado = []
         resultado, datos = obtener_lote_remarque_proveedora_desde_gui(codigo_proveedora)
 
         if not resultado:
@@ -2535,16 +2461,20 @@ class AppFashionReset(ctk.CTk):
             self.label_estado_remarque.configure(text=datos, text_color="#B00020")
             return
 
+        self.buscar_lote_remarque()
+        self.ultimo_lote_remarque_guardado = datos["prendas_actualizadas"]
         self.label_estado_remarque.configure(
-            text=f"Se guardaron {datos['cantidad_actualizadas']} remarques para {datos['codigo_proveedora']}.",
+            text=(
+                f"Se actualizaron {datos['cantidad_actualizadas']} precios para {datos['codigo_proveedora']}. "
+                "Podés exportar el aviso para la proveedora."
+            ),
             text_color="#2E5E2E"
         )
 
-        self.buscar_lote_remarque()
-
         resumen = "\n".join(
             [
-                f"{fila['codigo_prenda']}: {self._format_moneda(fila['precio_remarcado'])}"
+                f"{fila['codigo_prenda']}: {self._format_moneda(fila['precio_actual'])} -> "
+                f"{self._format_moneda(fila['precio_remarcado'])}"
                 for fila in datos["prendas_actualizadas"][:10]
             ]
         )
@@ -2555,7 +2485,7 @@ class AppFashionReset(ctk.CTk):
             "Lote de remarque guardado",
             "\n".join([
                 f"Proveedora: {datos['codigo_proveedora']}",
-                f"Cantidad actualizada: {datos['cantidad_actualizadas']}",
+                f"Precios actualizados: {datos['cantidad_actualizadas']}",
                 f"Fecha lote: {datos['fecha_remarque']}",
                 resumen
             ])
@@ -2571,9 +2501,8 @@ class AppFashionReset(ctk.CTk):
             )
             return
 
-        prendas_remarque = []
-        for fila in self.filas_remarque:
-            prendas_remarque.append({
+        prendas_remarque = [
+            {
                 "codigo_prenda": fila["codigo_prenda"],
                 "articulo": fila["articulo"],
                 "marca": fila["marca"],
@@ -2581,7 +2510,15 @@ class AppFashionReset(ctk.CTk):
                 "color": fila["color"],
                 "precio_actual": fila["precio_actual"],
                 "precio_remarcado": fila["entry_precio_remarcado"].get().strip(),
-            })
+            }
+            for fila in self.filas_remarque
+            if fila["entry_precio_remarcado"].get().strip()
+        ]
+        if not prendas_remarque:
+            prendas_remarque = [
+                {**prenda, "precio_remarcado": str(prenda["precio_remarcado"])}
+                for prenda in getattr(self, "ultimo_lote_remarque_guardado", [])
+            ]
 
         resultado, mensaje = exportar_lote_remarque_excel(
             codigo_proveedora,
@@ -2641,8 +2578,6 @@ class AppFashionReset(ctk.CTk):
 
         entry_precio_remarcado = ctk.CTkEntry(self.frame_tabla_remarque, width=120)
         entry_precio_remarcado.grid(row=fila_grid, column=8, padx=4, pady=4, sticky="w")
-        if prenda["precio_remarcado"] not in ("", None):
-            entry_precio_remarcado.insert(0, self._format_precio(prenda["precio_remarcado"]))
         entry_precio_remarcado.bind("<FocusOut>", lambda event, e=entry_precio_remarcado: self._formatear_precio_entry_remarque(e))
 
         self.filas_remarque.append({
@@ -2680,130 +2615,6 @@ class AppFashionReset(ctk.CTk):
             "Devolución",
             "Vamos a construir esta parte del proceso en el próximo paso."
         )
-
-    def buscar_lote_aprobacion_remarque(self):
-        codigo_proveedora = self.entry_aprobacion_remarque_proveedora.get().strip()
-        resultado, datos = obtener_lote_decision_remarque_desde_gui(codigo_proveedora)
-
-        if not resultado:
-            self.label_estado_aprobacion_remarque.configure(text=datos, text_color="#B00020")
-            self._limpiar_formulario_aprobacion_remarque()
-            return
-
-        self.lote_aprobacion_remarque_actual = datos
-        self.aprobacion_remarque_vars["nombre_proveedora"].set(
-            datos["nombre_proveedora"] or datos["codigo_proveedora"]
-        )
-        self.aprobacion_remarque_vars["cantidad_prendas"].set(str(datos["cantidad_prendas"]))
-        self.label_estado_aprobacion_remarque.configure(
-            text=f"Pendientes cargados para {datos['codigo_proveedora']}.",
-            text_color="#2E5E2E"
-        )
-        self._cargar_filas_aprobacion_remarque(datos["prendas"])
-
-    def guardar_decisiones_remarque(self):
-        codigo_proveedora = self.entry_aprobacion_remarque_proveedora.get().strip()
-
-        if not self.filas_aprobacion_remarque:
-            self.label_estado_aprobacion_remarque.configure(
-                text="ERROR: Primero cargá un lote pendiente.",
-                text_color="#B00020"
-            )
-            return
-
-        decisiones = []
-        for fila in self.filas_aprobacion_remarque:
-            decisiones.append({
-                "codigo_prenda": fila["codigo_prenda"],
-                "decision": fila["decision_var"].get().strip(),
-            })
-
-        resultado, datos = guardar_decisiones_remarque_desde_gui(codigo_proveedora, decisiones)
-        if not resultado:
-            self.label_estado_aprobacion_remarque.configure(text=datos, text_color="#B00020")
-            return
-
-        self.label_estado_aprobacion_remarque.configure(
-            text=(
-                f"Aprobadas: {datos['cantidad_aprobadas']} | "
-                f"Pendientes devolución: {datos['cantidad_devolucion']}"
-            ),
-            text_color="#2E5E2E"
-        )
-
-        resultado_recarga, datos_recarga = obtener_lote_decision_remarque_desde_gui(codigo_proveedora)
-        if resultado_recarga:
-            self.lote_aprobacion_remarque_actual = datos_recarga
-            self.aprobacion_remarque_vars["nombre_proveedora"].set(
-                datos_recarga["nombre_proveedora"] or datos_recarga["codigo_proveedora"]
-            )
-            self.aprobacion_remarque_vars["cantidad_prendas"].set(str(datos_recarga["cantidad_prendas"]))
-            self._cargar_filas_aprobacion_remarque(datos_recarga["prendas"])
-        else:
-            self._limpiar_formulario_aprobacion_remarque()
-
-        resumen = []
-        if datos["prendas_aprobadas"]:
-            resumen.append(f"Aprobadas: {datos['cantidad_aprobadas']}")
-        if datos["prendas_devolucion"]:
-            resumen.append(f"Pendientes devolución: {datos['cantidad_devolucion']}")
-
-        messagebox.showinfo(
-            "Decisiones guardadas",
-            "\n".join([
-                f"Proveedora: {datos['codigo_proveedora']}",
-                *resumen,
-            ])
-        )
-
-    def _cargar_filas_aprobacion_remarque(self, prendas):
-        for widget in self.frame_tabla_aprobacion_remarque.winfo_children():
-            info = widget.grid_info()
-            if int(info.get("row", 0)) > 0:
-                widget.destroy()
-
-        self.filas_aprobacion_remarque = []
-        self.fila_actual_aprobacion_remarque = 1
-
-        for prenda in prendas:
-            fila_grid = self.fila_actual_aprobacion_remarque
-            valores = [
-                (prenda["codigo_prenda"], 0, 90),
-                (prenda["articulo"], 1, 130),
-                (self._format_moneda(prenda["precio_actual"]), 2, 100),
-                (self._format_moneda(prenda["precio_remarcado"]), 3, 120),
-                (self._formatear_fecha(prenda["fecha_remarque"]), 4, 100),
-            ]
-
-            for texto, columna, ancho in valores:
-                ctk.CTkLabel(
-                    self.frame_tabla_aprobacion_remarque,
-                    text=str(texto),
-                    text_color=COLOR_TEXTO,
-                    width=ancho,
-                    anchor="w"
-                ).grid(row=fila_grid, column=columna, padx=4, pady=4, sticky="w")
-
-            decision_var = ctk.StringVar(value="PENDIENTE")
-            option_decision = ctk.CTkOptionMenu(
-                self.frame_tabla_aprobacion_remarque,
-                values=self.decision_remarque_opciones,
-                variable=decision_var,
-                width=120,
-                fg_color=COLOR_FONDO,
-                button_color=COLOR_FONDO,
-                button_hover_color=COLOR_HOVER,
-                text_color=COLOR_TEXTO,
-                dropdown_fg_color=COLOR_FONDO,
-                dropdown_text_color=COLOR_TEXTO
-            )
-            option_decision.grid(row=fila_grid, column=5, padx=4, pady=4, sticky="w")
-
-            self.filas_aprobacion_remarque.append({
-                "codigo_prenda": prenda["codigo_prenda"],
-                "decision_var": decision_var,
-            })
-            self.fila_actual_aprobacion_remarque += 1
 
     def _mostrar_prendas_vencidas(self, texto):
         self.textbox_prendas_vencidas.configure(state="normal")
@@ -3255,19 +3066,6 @@ class AppFashionReset(ctk.CTk):
                     widget.destroy()
         self.filas_remarque = []
         self.fila_actual_remarque = 1
-
-    def _limpiar_formulario_aprobacion_remarque(self):
-        self.lote_aprobacion_remarque_actual = None
-        if hasattr(self, "aprobacion_remarque_vars"):
-            for variable in self.aprobacion_remarque_vars.values():
-                variable.set("-")
-        if hasattr(self, "frame_tabla_aprobacion_remarque"):
-            for widget in self.frame_tabla_aprobacion_remarque.winfo_children():
-                info = widget.grid_info()
-                if int(info.get("row", 0)) > 0:
-                    widget.destroy()
-        self.filas_aprobacion_remarque = []
-        self.fila_actual_aprobacion_remarque = 1
 
     def _mostrar_desglose_resumen_general(self, texto):
         if not hasattr(self, "textbox_resumen_general"):
@@ -4421,5 +4219,6 @@ class AppFashionReset(ctk.CTk):
 
 if __name__ == "__main__":
     quitar_columna_validacion()
+    aplicar_remarques_pendientes()
     app = AppFashionReset()
     app.mainloop()

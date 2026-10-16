@@ -66,6 +66,33 @@ def guardar_archivo_excel(wb):
     crear_backup_excel()
     wb.save(ARCHIVO_EXCEL)
 
+
+def abrir_excel_para_lote():
+    """Abre el Excel una sola vez para guardar un lote completo."""
+    try:
+        wb = load_workbook(ARCHIVO_EXCEL)
+    except PermissionError:
+        return False, "ERROR: Cierra el archivo Excel antes de continuar."
+    except FileNotFoundError:
+        return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
+
+    for hoja in ("INGRESOS", "VENTAS"):
+        if hoja not in wb.sheetnames:
+            return False, f"ERROR: No existe la hoja {hoja} en el archivo Excel."
+
+    return True, wb
+
+
+def guardar_excel_lote(wb):
+    try:
+        guardar_archivo_excel(wb)
+    except PermissionError:
+        return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
+    except OSError as error:
+        return False, f"ERROR: No se pudo guardar el archivo Excel ({error})."
+
+    return True, "OK"
+
 # FUNCION AUXILIAR PARA LIMPIAR TEXTOS
 def limpiar_texto(texto):
     return " ".join(texto.strip().upper().split())
@@ -244,7 +271,8 @@ def _guardar_ingreso_en_excel(
     precio_texto,
     obs_ingreso,
     costo_texto="",
-    precio_obligatorio=False
+    precio_obligatorio=False,
+    wb=None
 ):
     fecha_ingreso = str(fecha_ingreso).strip()
     codigo_proveedora = limpiar_texto(str(codigo_proveedora))
@@ -287,8 +315,10 @@ def _guardar_ingreso_en_excel(
     if tipo_rendicion == "COSTO" and costo == "":
         costo = 0
 
+    guardar_al_final = wb is None
     try:
-        wb = load_workbook(ARCHIVO_EXCEL)
+        if wb is None:
+            wb = load_workbook(ARCHIVO_EXCEL)
         ws = wb["INGRESOS"]
     except PermissionError:
         return False, "ERROR: Cierra el archivo Excel antes de continuar."
@@ -330,15 +360,16 @@ def _guardar_ingreso_en_excel(
     ws.cell(row=fila_nueva, column=encabezados["COSTO"], value=costo)
     ws.cell(row=fila_nueva, column=encabezados["TIPO_RENDICION"], value=tipo_rendicion)
 
-    try:
-        guardar_archivo_excel(wb)
-    except PermissionError:
-        return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
+    if guardar_al_final:
+        try:
+            guardar_archivo_excel(wb)
+        except PermissionError:
+            return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
     return True, codigo_prenda
 
 
-def guardar_ingreso_desde_gui(fecha_ingreso, codigo_proveedora, numero_prenda, articulo, marca, talle, color, precio_texto, obs_ingreso, costo_texto=""):
+def guardar_ingreso_desde_gui(fecha_ingreso, codigo_proveedora, numero_prenda, articulo, marca, talle, color, precio_texto, obs_ingreso, costo_texto="", wb=None):
     return _guardar_ingreso_en_excel(
         fecha_ingreso,
         codigo_proveedora,
@@ -350,26 +381,40 @@ def guardar_ingreso_desde_gui(fecha_ingreso, codigo_proveedora, numero_prenda, a
         precio_texto,
         obs_ingreso,
         costo_texto,
-        precio_obligatorio=False
+        precio_obligatorio=False,
+        wb=wb
     )
 
 
-def buscar_ingreso_por_codigo(codigo_prenda):
+def buscar_ingreso_por_codigo(codigo_prenda, wb=None):
     codigo_prenda = str(codigo_prenda).strip().upper()
     if not codigo_prenda:
         return False, "CODIGO VACIO"
 
+    if wb is not None:
+        return _buscar_ingreso_en_libro(wb, codigo_prenda)
+
+    # Solo lectura: abre el Excel mucho mas rapido. Hay que cerrarlo siempre
+    # para no dejar el archivo bloqueado.
     try:
-        wb = load_workbook(ARCHIVO_EXCEL)
-        ws = wb["INGRESOS"]
+        wb = load_workbook(ARCHIVO_EXCEL, read_only=True)
     except PermissionError:
         return False, "ERROR: Cierra el archivo Excel antes de continuar."
     except FileNotFoundError:
         return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
-    except KeyError:
+
+    try:
+        return _buscar_ingreso_en_libro(wb, codigo_prenda)
+    finally:
+        wb.close()
+
+
+def _buscar_ingreso_en_libro(wb, codigo_prenda):
+    if "INGRESOS" not in wb.sheetnames:
         return False, "ERROR: No existe la hoja INGRESOS en el archivo Excel."
 
-    for fila in ws.iter_rows(min_row=2, values_only=True):
+    for fila in wb["INGRESOS"].iter_rows(min_row=2, values_only=True):
+        fila = tuple(fila) + (None,) * (9 - len(fila))
         valor_codigo = fila[2]
         if valor_codigo and str(valor_codigo).strip().upper() == codigo_prenda:
             estado = str(fila[8] or "").strip().upper()
@@ -398,7 +443,8 @@ def guardar_venta_desde_gui(
     color,
     precio_lista,
     precio_venta_texto,
-    obs_venta
+    obs_venta,
+    wb=None
 ):
     fecha_venta = str(fecha_venta).strip()
     cliente = limpiar_texto(str(cliente))
@@ -432,8 +478,10 @@ def guardar_venta_desde_gui(
     except ValueError:
         return False, "ERROR: PRECIO_VENTA invalido. Debe ser un numero entero."
 
+    guardar_al_final = wb is None
     try:
-        wb = load_workbook(ARCHIVO_EXCEL)
+        if wb is None:
+            wb = load_workbook(ARCHIVO_EXCEL)
         ws_ingresos = wb["INGRESOS"]
         ws_ventas = wb["VENTAS"]
     except PermissionError:
@@ -481,10 +529,11 @@ def guardar_venta_desde_gui(
         obs_venta
     ])
 
-    try:
-        guardar_archivo_excel(wb)
-    except PermissionError:
-        return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
+    if guardar_al_final:
+        try:
+            guardar_archivo_excel(wb)
+        except PermissionError:
+            return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
     return True, codigo_prenda
 
@@ -1481,17 +1530,21 @@ def guardar_lote_remarque_desde_gui(codigo_proveedora, prendas_remarque, fecha_r
         if dias_en_inventario < DIAS_PRENDA_VENCIDA:
             return False, f"ERROR: LA PRENDA {codigo_prenda} TODAVIA NO CUMPLE {MESES_PRENDA_VENCIDA} MESES EN INVENTARIO."
 
+        precio_anterior = fila[7].value if isinstance(fila[7].value, (int, float)) else str(fila[7].value or "").strip()
+        fila[7].value = item["precio_remarcado"]
         fila[encabezados["PRECIO_REMARCADO"] - 1].value = item["precio_remarcado"]
         fila[encabezados["FECHA_REMARQUE"] - 1].value = fecha_remarque
-        fila[encabezados["DECISION_PROVEEDORA"] - 1].value = "PENDIENTE"
+        fila[encabezados["DECISION_PROVEEDORA"] - 1].value = None
 
         prendas_actualizadas.append({
             "codigo_prenda": codigo_prenda,
             "articulo": str(fila[3].value or "").strip(),
-            "precio_actual": fila[7].value if isinstance(fila[7].value, (int, float)) else str(fila[7].value or "").strip(),
+            "marca": str(fila[4].value or "").strip(),
+            "talle": str(fila[5].value or "").strip(),
+            "color": str(fila[6].value or "").strip(),
+            "precio_actual": precio_anterior,
             "precio_remarcado": item["precio_remarcado"],
             "dias_en_inventario": dias_en_inventario,
-            "decision_proveedora": "PENDIENTE",
         })
 
     try:
@@ -1558,7 +1611,7 @@ def exportar_lote_remarque_excel(codigo_proveedora, nombre_proveedora, prendas_r
         ws_export = wb_export.active
         ws_export.title = "REMARQUE"
 
-        ws_export.append(["LOTE DE REMARQUE"])
+        ws_export.append(["AVISO DE REMARQUE"])
         ws_export.append(["FECHA REMARQUE", fecha_remarque])
         ws_export.append(["CODIGO PROVEEDORA", codigo_proveedora])
         ws_export.append(["NOMBRE PROVEEDORA", nombre_proveedora])
@@ -1570,9 +1623,8 @@ def exportar_lote_remarque_excel(codigo_proveedora, nombre_proveedora, prendas_r
             "MARCA",
             "TALLE",
             "COLOR",
-            "PRECIO ACTUAL",
-            "PRECIO REMARCADO",
-            "DECISION PROVEEDORA",
+            "PRECIO ANTERIOR",
+            "PRECIO NUEVO",
         ])
 
         for fila in filas_exportacion:
@@ -1584,7 +1636,6 @@ def exportar_lote_remarque_excel(codigo_proveedora, nombre_proveedora, prendas_r
                 fila["color"],
                 fila["precio_actual"],
                 fila["precio_remarcado"],
-                "",
             ])
 
         formato_miles = "#,##0"
@@ -1710,182 +1761,45 @@ def exportar_prendas_disponibles_proveedora_excel(codigo_proveedora, nombre_prov
         return False, "ERROR: No se pudo guardar el archivo Excel de prendas disponibles porque esta abierto."
 
 
-def obtener_lote_decision_remarque_desde_gui(codigo_proveedora):
-    codigo_proveedora = limpiar_texto(str(codigo_proveedora))
+def aplicar_remarques_pendientes():
+    """Aplica los remarques que quedaron esperando aprobacion de la proveedora.
 
-    if not codigo_proveedora:
-        return False, "ERROR: CODIGO_PROVEEDORA es obligatorio."
-
+    La aprobacion ya no se usa: el precio remarcado pasa a ser el precio de la prenda.
+    Se ejecuta al abrir la app y solo actua si encuentra remarques PENDIENTE.
+    """
     try:
         wb = load_workbook(ARCHIVO_EXCEL)
         ws_ingresos = wb["INGRESOS"]
-    except PermissionError:
-        return False, "ERROR: Cierra el archivo Excel antes de continuar."
-    except FileNotFoundError:
-        return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
-    except KeyError:
-        return False, "ERROR: No existe la hoja INGRESOS en el archivo Excel."
+    except (OSError, KeyError):
+        return
 
-    nombre_proveedora = ""
-    if "PROVEEDORAS" in wb.sheetnames:
-        ws_proveedoras = wb["PROVEEDORAS"]
-        for fila in ws_proveedoras.iter_rows(min_row=2, values_only=True):
-            if str(fila[0] or "").strip().upper() == codigo_proveedora:
-                nombre_proveedora = str(fila[1] or "").strip()
-                break
+    encabezados = _obtener_encabezados(ws_ingresos)
+    if "DECISION_PROVEEDORA" not in encabezados or "PRECIO_REMARCADO" not in encabezados:
+        return
 
-    encabezados = _asegurar_columnas_remarque(ws_ingresos)
-    prendas_pendientes = []
+    col_decision = encabezados["DECISION_PROVEEDORA"] - 1
+    col_precio_remarcado = encabezados["PRECIO_REMARCADO"] - 1
+    hubo_cambios = False
 
     for fila in ws_ingresos.iter_rows(min_row=2):
-        codigo_proveedora_fila = str(fila[1].value or "").strip().upper()
+        if str(fila[col_decision].value or "").strip().upper() != "PENDIENTE":
+            continue
+
         estado = str(fila[8].value or "").strip().upper()
-        decision = str(fila[encabezados["DECISION_PROVEEDORA"] - 1].value or "").strip().upper()
-        precio_remarcado = fila[encabezados["PRECIO_REMARCADO"] - 1].value
-
-        if codigo_proveedora_fila != codigo_proveedora:
-            continue
-        if estado != "DISPONIBLE":
-            continue
-        if decision != "PENDIENTE":
-            continue
-        if precio_remarcado in ("", None):
-            continue
-
-        prendas_pendientes.append({
-            "codigo_prenda": str(fila[2].value or "").strip(),
-            "articulo": str(fila[3].value or "").strip(),
-            "marca": str(fila[4].value or "").strip(),
-            "talle": str(fila[5].value or "").strip(),
-            "color": str(fila[6].value or "").strip(),
-            "precio_actual": fila[7].value if isinstance(fila[7].value, (int, float)) else str(fila[7].value or "").strip(),
-            "precio_remarcado": precio_remarcado,
-            "fecha_remarque": fila[encabezados["FECHA_REMARQUE"] - 1].value,
-            "decision_proveedora": decision,
-        })
-
-    prendas_pendientes.sort(key=lambda fila: fila["codigo_prenda"])
-
-    if not prendas_pendientes:
-        return False, "NO HAY REMARQUES PENDIENTES PARA ESTA PROVEEDORA."
-
-    return True, {
-        "codigo_proveedora": codigo_proveedora,
-        "nombre_proveedora": nombre_proveedora,
-        "cantidad_prendas": len(prendas_pendientes),
-        "prendas": prendas_pendientes,
-    }
-
-
-def guardar_decisiones_remarque_desde_gui(codigo_proveedora, decisiones):
-    codigo_proveedora = limpiar_texto(str(codigo_proveedora))
-
-    if not codigo_proveedora:
-        return False, "ERROR: CODIGO_PROVEEDORA es obligatorio."
-
-    decisiones_validas = []
-    codigos_vistos = set()
-
-    for fila in decisiones:
-        codigo_prenda = limpiar_texto(str(fila.get("codigo_prenda", "")))
-        decision = limpiar_texto(str(fila.get("decision", "")))
-
-        if not codigo_prenda and not decision:
-            continue
-        if not codigo_prenda:
-            return False, "ERROR: HAY UNA FILA SIN CODIGO_PRENDA."
-        if decision not in {"APROBADO", "DEVOLVER", "PENDIENTE"}:
-            return False, f"ERROR: DECISION invalida para {codigo_prenda}."
-        if codigo_prenda in codigos_vistos:
-            return False, f"ERROR: CODIGO_PRENDA duplicado en decisiones: {codigo_prenda}."
-
-        decisiones_validas.append({
-            "codigo_prenda": codigo_prenda,
-            "decision": decision,
-        })
-        codigos_vistos.add(codigo_prenda)
-
-    if not decisiones_validas:
-        return False, "ERROR: No hay decisiones para guardar."
-
-    try:
-        wb = load_workbook(ARCHIVO_EXCEL)
-        ws_ingresos = wb["INGRESOS"]
-    except PermissionError:
-        return False, "ERROR: Cierra el archivo Excel antes de continuar."
-    except FileNotFoundError:
-        return False, "ERROR: No se encontro el archivo fashion_reset.xlsx."
-    except KeyError:
-        return False, "ERROR: No existe la hoja INGRESOS en el archivo Excel."
-
-    encabezados = _asegurar_columnas_remarque(ws_ingresos)
-    filas_por_codigo = {}
-    for fila in ws_ingresos.iter_rows(min_row=2):
-        codigo = str(fila[2].value or "").strip().upper()
-        if codigo:
-            filas_por_codigo[codigo] = fila
-
-    prendas_aprobadas = []
-    prendas_devolucion = []
-
-    for item in decisiones_validas:
-        codigo_prenda = item["codigo_prenda"]
-        decision = item["decision"]
-        fila = filas_por_codigo.get(codigo_prenda)
-
-        if fila is None:
-            return False, f"ERROR: NO SE ENCONTRO LA PRENDA {codigo_prenda}."
-
-        codigo_proveedora_fila = str(fila[1].value or "").strip().upper()
-        estado = str(fila[8].value or "").strip().upper()
-        decision_actual = str(fila[encabezados["DECISION_PROVEEDORA"] - 1].value or "").strip().upper()
-        precio_remarcado = fila[encabezados["PRECIO_REMARCADO"] - 1].value
-
-        if codigo_proveedora_fila != codigo_proveedora:
-            return False, f"ERROR: LA PRENDA {codigo_prenda} NO PERTENECE A LA PROVEEDORA {codigo_proveedora}."
-        if estado != "DISPONIBLE":
-            return False, f"ERROR: LA PRENDA {codigo_prenda} NO ESTA DISPONIBLE PARA DECIDIR."
-        if decision_actual != "PENDIENTE":
-            return False, f"ERROR: LA PRENDA {codigo_prenda} YA NO TIENE DECISION PENDIENTE."
-        if precio_remarcado in ("", None):
-            return False, f"ERROR: LA PRENDA {codigo_prenda} NO TIENE PRECIO_REMARCADO."
-
-        if decision == "PENDIENTE":
-            continue
-
-        if decision == "APROBADO":
-            precio_anterior = fila[7].value
+        precio_remarcado = fila[col_precio_remarcado].value
+        if estado == "DISPONIBLE" and isinstance(precio_remarcado, (int, float)):
             fila[7].value = precio_remarcado
-            fila[encabezados["DECISION_PROVEEDORA"] - 1].value = "APROBADO"
-            prendas_aprobadas.append({
-                "codigo_prenda": codigo_prenda,
-                "precio_anterior": precio_anterior,
-                "precio_nuevo": precio_remarcado,
-            })
-            continue
 
-        fila[8].value = "PENDIENTE DEVOLUCION"
-        fila[encabezados["DECISION_PROVEEDORA"] - 1].value = "NO APROBADO"
-        prendas_devolucion.append({
-            "codigo_prenda": codigo_prenda,
-            "precio_remarcado": precio_remarcado,
-        })
+        fila[col_decision].value = None
+        hubo_cambios = True
 
-    if not prendas_aprobadas and not prendas_devolucion:
-        return False, "ERROR: No hay decisiones nuevas para aplicar."
+    if hubo_cambios:
+        try:
+            guardar_archivo_excel(wb)
+        except OSError:
+            pass
 
-    try:
-        guardar_archivo_excel(wb)
-    except PermissionError:
-        return False, "ERROR: No se pudo guardar porque el archivo Excel esta abierto."
 
-    return True, {
-        "codigo_proveedora": codigo_proveedora,
-        "cantidad_aprobadas": len(prendas_aprobadas),
-        "cantidad_devolucion": len(prendas_devolucion),
-        "prendas_aprobadas": prendas_aprobadas,
-        "prendas_devolucion": prendas_devolucion,
-    }
 
 
 
